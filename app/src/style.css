@@ -1163,3 +1163,21 @@ button, .primary {
 .skip-link:focus {
   top: 8px;
 }
+
+.steps {
+  list-style: none;
+  padding: 12px 14px;
+  margin: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.step-info {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--muted-fg);
+  display: inline-block;
+  margin-top: 2px;
+  word-break: break-all;
+}
