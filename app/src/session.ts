@@ -95,9 +95,9 @@ export class Session {
   private channel: RealtimeChannel | null = null;
   private readonly code: string;
   private readonly me: Member;
-  private readonly listener: SessionListener;
+  public listener: SessionListener;
 
-  constructor(code: string, me: Member, listener: SessionListener) {
+  constructor(code: string, me: Member, listener: SessionListener = {}) {
     this.code = code;
     this.me = me;
     this.listener = listener;
@@ -174,5 +174,22 @@ export class Session {
       await this.channel.unsubscribe();
       this.channel = null;
     }
+  }
+}
+
+export let globalSession: Session | null = null;
+
+export function initGlobalSession() {
+  const state = loadSession();
+  if (state && !globalSession) {
+    globalSession = new Session(state.code, state.me);
+    globalSession.connect().catch(console.error);
+  }
+}
+
+export function destroyGlobalSession() {
+  if (globalSession) {
+    globalSession.disconnect();
+    globalSession = null;
   }
 }

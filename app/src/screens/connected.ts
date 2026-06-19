@@ -1,9 +1,10 @@
 import { getProduct } from "../catalog";
 import { getList, addToList } from "../list";
 import {
-  Session,
   clearSession,
   loadSession,
+  globalSession,
+  destroyGlobalSession,
   type Member,
   type SessionEvent,
 } from "../session";
@@ -241,89 +242,82 @@ export function renderConnected(root: HTMLElement) {
     }
   }
 
-  const session = new Session(
-    state.code,
-    {
-      id: state.me.id,
-      name: state.me.name,
-      emoji: state.me.emoji,
-      zone: "entry",
+  const session = globalSession;
+  if (!session) {
+    location.replace("?screen=connect");
+    return;
+  }
+
+  session.listener = {
+    onPresence: (m) => {
+      members = m;
+      renderRoster();
     },
-    {
-      onPresence: (m) => {
-        members = m;
-        renderRoster();
-      },
-      onEvent: (e) => {
-        if (e.kind === "chat") {
-          const who = nameFor(e.from);
-          pushChat(`<strong>${escapeHTML(who)}</strong> ${escapeHTML(e.text)}`);
-          return;
-        }
-
-        // Someone joined and is asking for our current cart — reply with a snapshot.
-        if (e.kind === "list:request-snapshot") {
-          const list = getList();
-          if (list.length > 0) {
-            session
-              .send({ kind: "list:snapshot", from: state!.me.id, codes: list })
-              .catch(console.error);
-          }
-          return; // no feed noise
-        }
-
-        // Keep other members' carts up to date
-        if (e.kind === "list:snapshot") {
-          otherCarts.set(e.from, e.codes);
-          renderTheirCart();
-        } else if (e.kind === "list:added") {
-          const existing = otherCarts.get(e.from) ?? [];
-          if (!existing.includes(e.code)) existing.push(e.code);
-          otherCarts.set(e.from, existing);
-          renderTheirCart();
-        } else if (e.kind === "list:removed") {
-          const existing = otherCarts.get(e.from) ?? [];
-          otherCarts.set(
-            e.from,
-            existing.filter((c) => c !== e.code),
-          );
-          renderTheirCart();
-        }
-
-        const desc = describeEvent(e);
-        if (desc) pushFeed(desc);
-      },
-    },
-  );
-
-  session
-    .connect()
-    .then(async () => {
-      statusEl.textContent = "Connected. Share the code to invite people.";
-      renderMyCart();
-
-      const list = getList();
-
-      // Push our own cart to the feed entry so we remember we joined.
-      if (list.length > 0) {
-        pushFeed(
-          `<strong>${escapeHTML(`${state.me.emoji} ${state.me.name}`)}</strong> joined with ${list.length} item${list.length > 1 ? "s" : ""}`,
-        );
+    onEvent: (e) => {
+      if (e.kind === "chat") {
+        const who = nameFor(e.from);
+        pushChat(`<strong>${escapeHTML(who)}</strong> ${escapeHTML(e.text)}`);
+        return;
       }
 
-      // Tell everyone in the room "I just joined, please send me your cart".
-      // Existing members will hear this and respond with list:snapshot.
-      // We also broadcast our own snapshot at the same time so they see ours.
-      await Promise.all([
-        session.send({ kind: "list:request-snapshot", from: state.me.id }),
-        list.length > 0
-          ? session.send({ kind: "list:snapshot", from: state.me.id, codes: list })
-          : Promise.resolve(),
-      ]);
-    })
-    .catch((err: unknown) => {
-      statusEl.textContent = `ERROR: ${(err as Error).message ?? String(err)}`;
-    });
+      // Someone joined and is asking for our current cart — reply with a snapshot.
+      if (e.kind === "list:request-snapshot") {
+        const list = getList();
+        if (list.length > 0) {
+          session
+            .send({ kind: "list:snapshot", from: state!.me.id, codes: list })
+            .catch(console.error);
+        }
+        return; // no feed noise
+      }
+
+      // Keep other members' carts up to date
+      if (e.kind === "list:snapshot") {
+        otherCarts.set(e.from, e.codes);
+        renderTheirCart();
+      } else if (e.kind === "list:added") {
+        const existing = otherCarts.get(e.from) ?? [];
+        if (!existing.includes(e.code)) existing.push(e.code);
+        otherCarts.set(e.from, existing);
+        renderTheirCart();
+      } else if (e.kind === "list:removed") {
+        const existing = otherCarts.get(e.from) ?? [];
+        otherCarts.set(
+          e.from,
+          existing.filter((c) => c !== e.code),
+        );
+        renderTheirCart();
+      }
+
+      const desc = describeEvent(e);
+      if (desc) pushFeed(desc);
+    },
+  };
+
+  // Wait a small amount of time for the global session to connect if it was just initialized
+  setTimeout(async () => {
+    statusEl.textContent = "Connected. Share the code to invite people.";
+    renderMyCart();
+
+    const list = getList();
+
+    // Push our own cart to the feed entry so we remember we joined.
+    if (list.length > 0) {
+      pushFeed(
+        `<strong>${escapeHTML(`${state.me.emoji} ${state.me.name}`)}</strong> joined with ${list.length} item${list.length > 1 ? "s" : ""}`,
+      );
+    }
+
+    // Tell everyone in the room "I just joined, please send me your cart".
+    // Existing members will hear this and respond with list:snapshot.
+    // We also broadcast our own snapshot at the same time so they see ours.
+    await Promise.all([
+      session.send({ kind: "list:request-snapshot", from: state.me.id }),
+      list.length > 0
+        ? session.send({ kind: "list:snapshot", from: state.me.id, codes: list })
+        : Promise.resolve(),
+    ]);
+  }, 100);
 
   // Merge their cart into mine
   mergeBtn.addEventListener("click", () => {
@@ -385,9 +379,10 @@ export function renderConnected(root: HTMLElement) {
 
   leaveBtn.addEventListener("click", async () => {
     if (!confirm("Leave this session?")) return;
-    await session.disconnect();
+    // Disconnect globally
+    destroyGlobalSession();
     clearSession();
-    location.href = "?screen=list";
+    location.replace("?screen=connect");
   });
 
   // NOTE: we intentionally do NOT call session.disconnect() on beforeunload.

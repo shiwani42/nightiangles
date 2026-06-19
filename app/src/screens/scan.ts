@@ -184,7 +184,9 @@ export function renderScan(root: HTMLElement) {
     setStatus(
       `searching for ${items.length} item${items.length > 1 ? "s" : ""} — tap Finish when done`,
     );
-  }
+
+
+  } // end boot()
 
   startBtn.addEventListener("click", () => {
     overlay.style.display = "none";

@@ -598,7 +598,25 @@ button, .primary { font: inherit; cursor: pointer; }
   background: #000;
   box-shadow: var(--shadow-md);
 }
-.scan-view { width: 100%; height: 100%; position: absolute; inset: 0; }
+
+@media (min-width: 450px) {
+  .scan-viewport {
+    width: 100vw;
+    margin-left: calc(-50vw + 50%);
+    border-radius: 0;
+    min-height: 80vh;
+  }
+}
+
+.scan-view { width: 100%; height: 100%; position: absolute; inset: 0; overflow: hidden; }
+
+scandit-data-capture-view {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
 
 .scan-start-overlay {
   position: absolute;

@@ -12,8 +12,7 @@ import { renderRepair } from "./screens/repair";
 import { renderScan } from "./screens/scan";
 import { renderSettings } from "./screens/settings";
 import { renderSmoke } from "./screens/smoke";
-import { loadSession } from "./session";
-
+import { loadSession, initGlobalSession } from "./session";
 const VALID_SCREENS: Screen[] = [
   "list",
   "map",
@@ -157,4 +156,5 @@ function mount() {
 }
 
 applyPrefs();
+initGlobalSession();
 mount();
