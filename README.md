@@ -23,6 +23,10 @@ She invented the polar area chart to prove that sanitation — not battle wounds
 
 ---
 
+Experience TrailMate AI here: https://alpine-smart-shopper.lovable.app
+
+---
+
 ## The problem
 
 A customer walks into an outdoor gear store. They see a wall of 250+ jackets. Every jacket has a number on the tag. None of the numbers mean anything without a degree in textile engineering.
