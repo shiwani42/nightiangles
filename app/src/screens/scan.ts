@@ -117,6 +117,13 @@ export function renderScan(root: HTMLElement) {
       true, // haptics
     );
 
+    // Workaround for Scandit 8.4.0 bug: createWithSettings() does NOT register
+    // the <scandit-barcode-find-view> custom element (create() does). Without
+    // registration, document.createElement(tag) returns a bare HTMLElement
+    // missing methods like setTorchAvailable, causing "setTorchAvailable is not
+    // a function" at runtime. Calling register() first fixes it.
+    (BarcodeFindView as unknown as { register?: () => void }).register?.();
+
     const view = await BarcodeFindView.createWithSettings(
       dataCaptureView,
       context,
