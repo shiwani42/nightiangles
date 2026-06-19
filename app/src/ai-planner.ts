@@ -1,4 +1,5 @@
 import { allProducts, compactCatalog, getProduct } from "./catalog";
+import { forecast, type ForecastSummary } from "./weather";
 
 const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY as
   | string
@@ -10,91 +11,220 @@ export type PlanResult = {
   codes: string[];
   source: "llm" | "heuristic";
   reasoning?: string;
+  weather?: ForecastSummary;
 };
 
-export async function planTrip(tripText: string): Promise<PlanResult> {
+export type PlanProgress = (msg: string, weather?: ForecastSummary) => void;
+
+export async function planTrip(
+  tripText: string,
+  onProgress?: PlanProgress,
+): Promise<PlanResult> {
   if (ANTHROPIC_API_KEY) {
     try {
-      return await planWithLLM(tripText);
+      return await planWithLLM(tripText, onProgress);
     } catch (err) {
       console.warn("LLM planner failed, falling back to heuristic:", err);
+      onProgress?.("LLM error — using local fallback");
       const fallback = planHeuristic(tripText);
-      return { ...fallback, reasoning: `(LLM error — heuristic fallback used)` };
+      return {
+        ...fallback,
+        reasoning: `(LLM error: ${(err as Error).message}) ${fallback.reasoning ?? ""}`,
+      };
     }
   }
+  onProgress?.("No API key set — using local keyword matching");
   return planHeuristic(tripText);
 }
 
-async function planWithLLM(tripText: string): Promise<PlanResult> {
+// ---------- Agentic loop with weather tool ----------
+
+type AnthropicContentBlock =
+  | { type: "text"; text: string }
+  | { type: "tool_use"; id: string; name: string; input: Record<string, unknown> }
+  | { type: "tool_result"; tool_use_id: string; content: string };
+
+type AnthropicMessage = {
+  role: "user" | "assistant";
+  content: string | AnthropicContentBlock[];
+};
+
+const WEATHER_TOOL = {
+  name: "get_weather_forecast",
+  description:
+    "Fetches a daily weather forecast for a location and date window. Use this to ground gear suggestions in real conditions (temperature, precipitation, snow, wind, daylight). Always call this BEFORE selecting gear if the trip text mentions any location and timing.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      location: {
+        type: "string",
+        description:
+          "City, region, or landmark (e.g. 'Zermatt', 'Swiss Alps', 'Mont Blanc'). Use the most specific name from the trip text.",
+      },
+      start_date: {
+        type: "string",
+        description:
+          "Trip start date in YYYY-MM-DD. If trip text gives a relative date ('next Saturday'), resolve it. If no date, omit.",
+      },
+      days: {
+        type: "integer",
+        description: "Number of days the trip lasts (1-16).",
+      },
+    },
+    required: ["location", "days"],
+  },
+};
+
+async function planWithLLM(
+  tripText: string,
+  onProgress?: PlanProgress,
+): Promise<PlanResult> {
   const catalog = compactCatalog();
 
-  const prompt = `You are a gear advisor for a Swiss outdoor retailer. Given a customer's trip description and the available catalog, return a JSON object with two fields:
-- "codes": an array of 4-8 product code strings (the "code" field from the catalog) for the gear they need
-- "reasoning": one short sentence explaining the selection (e.g. "Cold-weather Alpine hike: insulated jacket, 4-season tent, hiking boots, layered base")
+  const systemPrompt = `You are a gear advisor for a Swiss outdoor retailer.
 
-Pick the BEST single variant per product when multiple sizes/colors exist (assume size M for clothing, size 42 for footwear unless the trip text specifies otherwise). Don't pick more than one variant of the same product_id pattern.
+Goal: pick 4-8 catalog items for the customer's trip, grounded in real weather + the catalog data.
 
-Trip:
-${tripText}
+Strict workflow:
+1. Call get_weather_forecast with the location and number of days from the trip text. If a date is given resolve it (e.g. "March 14" -> "YYYY-03-14" using the next March 14). If no location is given, pick the most plausible (default "Swiss Alps").
+2. After the tool returns, pick gear from the catalog using the forecast (cold + snow -> insulated jacket + 4-season sleeping bag; rain -> waterproof shell; short daylight -> headlamp; high wind -> windproof).
+3. Pick ONE variant per product_id. Assume size M for clothing, size 42 for footwear unless the trip says otherwise.
+4. Respond with ONLY a JSON object (no markdown, no commentary), shape:
+   {"codes": ["...","..."], "reasoning": "<= 200 chars referencing the live forecast (e.g. 'snow expected, -8°C nights -> insulated jacket + 4-season tent')"}
 
-Catalog:
-${JSON.stringify(catalog)}
+Catalog (one variant per row, ~250 rows):
+${JSON.stringify(catalog)}`;
 
-Respond with ONLY a JSON object, no markdown. Example:
-{"codes":["7610000000011","7610000000088"],"reasoning":"3-day winter hike: ..."}`;
+  const messages: AnthropicMessage[] = [
+    { role: "user", content: `Trip: ${tripText}` },
+  ];
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": ANTHROPIC_API_KEY!,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 1024,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
+  let weather: ForecastSummary | undefined;
+  let safetyTurns = 4;
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Claude API ${res.status}: ${text.slice(0, 200)}`);
+  while (safetyTurns-- > 0) {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_API_KEY!,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true",
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 2048,
+        system: systemPrompt,
+        tools: [WEATHER_TOOL],
+        messages,
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`Claude API ${res.status}: ${text.slice(0, 250)}`);
+    }
+
+    const json = await res.json();
+    const blocks = json.content as AnthropicContentBlock[];
+    messages.push({ role: "assistant", content: blocks });
+
+    const toolUse = blocks.find(
+      (b): b is Extract<AnthropicContentBlock, { type: "tool_use" }> =>
+        b.type === "tool_use",
+    );
+
+    if (toolUse) {
+      onProgress?.(`Checking the forecast for ${toolUse.input.location}…`);
+      let toolResult: string;
+      try {
+        if (toolUse.name === "get_weather_forecast") {
+          const args = toolUse.input as {
+            location: string;
+            start_date?: string;
+            days: number;
+          };
+          const w = await forecast(args.location, args.start_date, args.days);
+          if (!w) {
+            toolResult = JSON.stringify({
+              error: `Could not find a forecast for "${args.location}".`,
+            });
+          } else {
+            weather = w;
+            onProgress?.(
+              `Forecast in: ${w.summary.min_c}°C — ${w.summary.max_c}°C, ${w.summary.has_snow ? "snow" : w.summary.has_rain ? "rain" : "dry"}`,
+              w,
+            );
+            toolResult = JSON.stringify({
+              location: w.location,
+              summary: w.summary,
+              daily: w.daily,
+            });
+          }
+        } else {
+          toolResult = JSON.stringify({ error: `Unknown tool: ${toolUse.name}` });
+        }
+      } catch (err) {
+        toolResult = JSON.stringify({
+          error: `Tool failed: ${(err as Error).message}`,
+        });
+      }
+
+      messages.push({
+        role: "user",
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: toolUse.id,
+            content: toolResult,
+          },
+        ],
+      });
+      continue;
+    }
+
+    // No tool call -> final answer.
+    const textBlock = blocks.find(
+      (b): b is Extract<AnthropicContentBlock, { type: "text" }> =>
+        b.type === "text",
+    );
+    if (!textBlock) throw new Error("No text in final response");
+    onProgress?.("Picking gear…");
+    return { ...parseFinalAnswer(textBlock.text), source: "llm", weather };
   }
 
-  const json = await res.json();
-  const text = (json.content?.[0]?.text ?? "").trim();
+  throw new Error("Agent loop exceeded safety budget");
+}
 
-  // Strip optional ```json fences
-  const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/```$/, "");
+function parseFinalAnswer(text: string): { codes: string[]; reasoning?: string } {
+  const cleaned = text
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/```$/, "");
   const match = cleaned.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error("LLM response did not contain a JSON object");
+  if (!match) throw new Error("LLM response did not contain JSON");
 
   const parsed = JSON.parse(match[0]) as {
     codes: unknown;
     reasoning?: unknown;
   };
-
   if (!Array.isArray(parsed.codes)) throw new Error("`codes` is not an array");
 
   const codes = parsed.codes
     .filter((c): c is string => typeof c === "string")
-    .filter((c) => Boolean(getProduct(c))); // drop any that don't resolve
+    .filter((c) => Boolean(getProduct(c)));
 
-  if (codes.length === 0)
-    throw new Error("LLM returned no valid product codes");
+  if (codes.length === 0) throw new Error("LLM returned no valid product codes");
 
   return {
     codes,
-    source: "llm",
     reasoning:
       typeof parsed.reasoning === "string" ? parsed.reasoning : undefined,
   };
 }
 
-// Pure-JS fallback. Keyword matching against tags + categories, then a
-// per-category pick. Not as good as the LLM but always works, no API key.
+// ---------- Heuristic fallback (no API key) ----------
+
 function planHeuristic(tripText: string): PlanResult {
   const text = tripText.toLowerCase();
 
@@ -105,15 +235,10 @@ function planHeuristic(tripText: string): PlanResult {
     snow: { tags: ["winter", "4-season"], coldHint: true },
     alpine: { tags: ["4-season", "technical"], coldHint: true },
     alps: { tags: ["4-season", "technical"], coldHint: true },
-    "-10": { tags: ["winter", "insulated"], coldHint: true },
-    "-20": { tags: ["winter", "insulated", "down"], coldHint: true },
-
     summer: { tags: ["summer", "lightweight", "breathable", "3-season"] },
     warm: { tags: ["lightweight", "breathable"] },
-
     rain: { tags: ["waterproof", "gore-tex"] },
     wet: { tags: ["waterproof", "gore-tex"] },
-
     hike: {
       categories: ["boots", "trail-shoes", "hardshell", "fleece", "base-layer", "backpack"],
     },
@@ -127,21 +252,18 @@ function planHeuristic(tripText: string): PlanResult {
     },
     camp: { categories: ["tent", "sleeping-bag", "sleeping-mat", "stove"] },
     camping: { categories: ["tent", "sleeping-bag", "sleeping-mat", "stove"] },
-
     multi: { categories: ["tent", "sleeping-bag", "sleeping-mat", "backpack"] },
     overnight: { categories: ["tent", "sleeping-bag", "sleeping-mat"] },
     "3-day": { categories: ["tent", "sleeping-bag", "sleeping-mat", "backpack"] },
     "4-day": { categories: ["tent", "sleeping-bag", "sleeping-mat", "backpack"] },
     "5-day": { categories: ["tent", "sleeping-bag", "sleeping-mat", "backpack"] },
     week: { categories: ["tent", "sleeping-bag", "sleeping-mat", "backpack"] },
-
     night: { categories: ["headlamp"] },
   };
 
   const wantedTags = new Set<string>();
   const wantedCategories = new Set<string>();
   let coldHint = false;
-
   for (const [kw, m] of Object.entries(KEYWORDS)) {
     if (text.includes(kw)) {
       m.tags?.forEach((t) => wantedTags.add(t));
@@ -149,8 +271,6 @@ function planHeuristic(tripText: string): PlanResult {
       if (m.coldHint) coldHint = true;
     }
   }
-
-  // If we matched nothing, throw in some sensible defaults for an outdoor trip.
   if (wantedCategories.size === 0 && wantedTags.size === 0) {
     ["backpack", "hardshell", "boots"].forEach((c) => wantedCategories.add(c));
   }
@@ -159,17 +279,13 @@ function planHeuristic(tripText: string): PlanResult {
   const scored = products.map((p) => {
     let score = 0;
     if (wantedCategories.has(p.category)) score += 3;
-    for (const tag of p.tags) {
-      if (wantedTags.has(tag)) score += 1;
-    }
+    for (const tag of p.tags) if (wantedTags.has(tag)) score += 1;
     if (coldHint && p.temp_rating_c != null && p.temp_rating_c > 5) score -= 1;
     if (!coldHint && p.temp_rating_c != null && p.temp_rating_c < -10) score -= 1;
     return { p, score };
   });
-
   scored.sort((a, b) => b.score - a.score);
 
-  // One pick per category, up to 8 items, only items with score > 0.
   const picked = new Set<string>();
   const codes: string[] = [];
   for (const { p, score } of scored) {
@@ -180,6 +296,9 @@ function planHeuristic(tripText: string): PlanResult {
     if (codes.length >= 8) break;
   }
 
-  const reasoning = `Matched keywords: ${[...wantedTags, ...wantedCategories].join(", ") || "none"}`;
-  return { codes, source: "heuristic", reasoning };
+  return {
+    codes,
+    source: "heuristic",
+    reasoning: `Matched keywords: ${[...wantedTags, ...wantedCategories].join(", ") || "(none)"}`,
+  };
 }
