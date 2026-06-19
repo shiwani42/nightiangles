@@ -65,7 +65,7 @@ export function renderListBuilder(root: HTMLElement) {
   root.innerHTML = `
     <header>
       <h1>What are you looking for?</h1>
-      <p class="tag">Search the catalog. We'll guide you to it.</p>
+      <p class="tag">Search the catalog, or <a class="inline-link" href="?screen=plan">plan a trip</a> and we'll suggest gear.</p>
     </header>
     <main class="screen-list">
       <input id="q" class="search" type="search" inputmode="search" placeholder="Search by name, brand, category…" autocomplete="off" />

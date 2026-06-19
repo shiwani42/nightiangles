@@ -41,6 +41,23 @@ export function allProducts(): Product[] {
   return products;
 }
 
+// Compact projection of the catalog for LLM prompts — small enough that the
+// full catalog fits comfortably in a single Claude message.
+export function compactCatalog() {
+  return products.map((p) => ({
+    code: p.product_code,
+    name: p.name,
+    category: p.category,
+    tags: p.tags,
+    size: p.size,
+    color: p.color,
+    weight_g: p.weight_g,
+    waterproof_rating_mm: p.waterproof_rating_mm,
+    temp_rating_c: p.temp_rating_c,
+    price_chf: p.price_chf,
+  }));
+}
+
 export function search(query: string, limit = 12): Product[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
