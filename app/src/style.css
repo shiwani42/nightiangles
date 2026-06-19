@@ -591,7 +591,7 @@ button, .primary { font: inherit; cursor: pointer; }
 
 .scan-viewport {
   flex: 1;
-  min-height: 0;
+  min-height: 70vh;
   position: relative;
   border-radius: var(--radius);
   overflow: hidden;
@@ -599,36 +599,20 @@ button, .primary { font: inherit; cursor: pointer; }
   box-shadow: var(--shadow-md);
 }
 
+/* Mobile: push the viewport to fill all space between header and tab bar so
+   Scandit's internal pause layout has maximum room and the black gap shrinks. */
+@media (max-width: 449px) {
+  .scan-viewport {
+    min-height: calc(100svh - 160px);
+  }
+}
+
 @media (min-width: 450px) {
   .scan-viewport {
     width: 100vw;
     margin-left: calc(-50vw + 50%);
     border-radius: 0;
-  }
-}
-
-/* When scan screen is active, make #app height-constrained so flex: 1 fills properly.
-   Body padding-bottom is removed because we account for the tab bar explicitly. */
-body.scan-active {
-  padding-bottom: 0;
-  overflow: hidden;
-}
-body.scan-active #app {
-  height: 100dvh;
-  min-height: unset;
-  overflow: hidden;
-}
-body.scan-active main.screen-scan {
-  padding: 0;
-  gap: 0;
-  /* Push content above the fixed tab bar */
-  padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom));
-}
-@media (min-width: 450px) {
-  body.scan-active .scan-viewport {
-    /* Reset the negative-margin breakout — full height layout handles width */
-    width: 100%;
-    margin-left: 0;
+    min-height: 80vh;
   }
 }
 
