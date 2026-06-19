@@ -1,0 +1,3 @@
+[submodule "body-measurements"]
+	path = body-measurements
+	url = https://github.com/farazBhatti/Human-Body-Measurements-using-Computer-Vision.git
