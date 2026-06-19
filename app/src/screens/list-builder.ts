@@ -2,6 +2,20 @@ import type { Product } from "../types";
 import { search, getProduct } from "../catalog";
 import { getList, addToList, removeFromList, clearList } from "../list";
 
+// 8 items from the bundled scandit-challenge/dataset/sample-barcodes.pdf.
+// 1 shoe (QR) + 1 mid boot + 1 hiking shoe + 2 sock variants + 3 tops.
+// Covers both Zone B (footwear) and Zone G (accessories) on the map.
+const DEMO_LIST = [
+  "127396746875", // Pinewild Trail Shoe, Purple, size 42
+  "566275535035", // Steinbock Mid Boot, Black/Yellow, size 42
+  "422867137693", // Steinbock Hiking Shoe, Brown, size 42
+  "2846287789562", // wearit Socks, Teal Dot, size M
+  "5628895968545", // wearit Socks, Navy, size M
+  "9807639273582", // Glaronia Knitted Hoodie Jumper, Charcoal, size M
+  "9807639272886", // Pinewild 3/4 Sleeve T-Shirt, Grey, size S
+  "9807639274650", // Pinewild Short Sleeve Top V-Neck, Green, size M
+];
+
 function escapeHTML(s: string): string {
   return s
     .replaceAll("&", "&amp;")
@@ -60,7 +74,10 @@ export function renderListBuilder(root: HTMLElement) {
       <section class="your-list">
         <div class="your-list__head">
           <h2>Your list <span id="count" class="count">0</span></h2>
-          <button id="clear" class="link-btn">Clear</button>
+          <div class="your-list__actions">
+            <button id="demo" class="link-btn">Load demo list</button>
+            <button id="clear" class="link-btn">Clear</button>
+          </div>
         </div>
         <ul id="chips" class="chips"></ul>
         <p id="empty" class="empty">Add at least one item to continue.</p>
@@ -77,6 +94,7 @@ export function renderListBuilder(root: HTMLElement) {
   const emptyEl = root.querySelector("#empty") as HTMLParagraphElement;
   const continueEl = root.querySelector("#continue") as HTMLButtonElement;
   const clearEl = root.querySelector("#clear") as HTMLButtonElement;
+  const demoEl = root.querySelector("#demo") as HTMLButtonElement;
 
   function refreshList() {
     const list = getList();
@@ -143,6 +161,14 @@ export function renderListBuilder(root: HTMLElement) {
   clearEl.addEventListener("click", () => {
     if (!confirm("Clear your list?")) return;
     clearList();
+    refreshList();
+  });
+
+  demoEl.addEventListener("click", () => {
+    // Wipe + load the 8 PDF-scannable items
+    clearList();
+    for (const code of DEMO_LIST) addToList(code);
+    qEl.value = "";
     refreshList();
   });
 
