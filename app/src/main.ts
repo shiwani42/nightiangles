@@ -1,5 +1,6 @@
 import "./style.css";
 import type { Screen } from "./types";
+import { renderCompare } from "./screens/compare";
 import { renderDone } from "./screens/done";
 import { renderListBuilder } from "./screens/list-builder";
 import { renderMap } from "./screens/map";
@@ -49,8 +50,7 @@ function mount() {
       renderPlan(root);
       break;
     case "compare":
-      // v3.1 — wired in next commit
-      window.location.replace("?screen=list");
+      renderCompare(root);
       break;
   }
 }

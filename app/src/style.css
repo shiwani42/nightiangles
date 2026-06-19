@@ -654,3 +654,92 @@ button, .primary {
   font-size: 13px;
   color: #ddd;
 }
+
+/* ===== Compare screen ===== */
+
+.screen-compare { gap: 10px; }
+
+.compare-cam {
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  height: 0;
+  transition: height 0.2s;
+}
+
+.compare-cam--active {
+  height: 40vh;
+}
+
+.slots {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.slot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.slot--filled { border-color: var(--accent-border); background: var(--accent-bg); }
+
+.slot__header {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.slot__body { flex: 1; min-width: 0; font-size: 13px; }
+.slot__name { font-size: 14px; font-weight: 600; color: #fff; }
+.slot__sub { font-size: 12px; opacity: 0.6; }
+.slot__price { font-weight: 700; color: var(--accent); margin-top: 2px; }
+.slot__btn {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 8px;
+}
+
+.diff-card {
+  margin-top: 4px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(46, 204, 113, 0.10), rgba(76, 139, 245, 0.10));
+  border: 1px solid var(--accent-border);
+  border-radius: 12px;
+}
+.diff-card h3 { margin: 0 0 4px; font-size: 16px; color: #fff; }
+.diff-card__lead { font-size: 13px; opacity: 0.7; margin: 8px 0; }
+.diff-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+.diff-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  background: rgba(0,0,0,0.25);
+  border-radius: 8px;
+}
+.diff-list__label { color: #ddd; }
+.diff-list__delta { font-weight: 700; color: var(--accent); white-space: nowrap; }
