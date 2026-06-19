@@ -386,9 +386,14 @@ export function renderConnected(root: HTMLElement) {
     location.href = "?screen=list";
   });
 
-  window.addEventListener("beforeunload", () => {
-    session.disconnect();
-  });
+  // NOTE: we intentionally do NOT call session.disconnect() on beforeunload.
+  // Every screen transition is a full page reload, so beforeunload fires on
+  // navigate-to-list, navigate-to-scan, etc. — not just on true tab closes.
+  // Calling disconnect() there causes other members to see a leave/rejoin
+  // cycle every time you pop over to check your list. Instead, we let the
+  // browser close the WebSocket naturally; Supabase detects the drop via its
+  // heartbeat (a few seconds) and cleans up presence automatically.
+  // Explicit disconnect() is only called from the "Leave session" button above.
 
   renderRoster();
 }

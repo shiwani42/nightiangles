@@ -1,6 +1,7 @@
 import type { Product } from "../types";
 import { search, getProduct } from "../catalog";
 import { getList, addToList, removeFromList, clearList } from "../list";
+import { loadSession } from "../session";
 
 // 8 items from the bundled scandit-challenge/dataset/sample-barcodes.pdf.
 // 1 shoe (QR) + 1 mid boot + 1 hiking shoe + 2 sock variants + 3 tops.
@@ -62,12 +63,19 @@ function chip(p: Product): string {
 }
 
 export function renderListBuilder(root: HTMLElement) {
+  const activeSession = loadSession();
+
   root.innerHTML = `
+    ${activeSession ? `
+    <div class="session-banner" id="session-banner">
+      <span>🔗 Session <strong>${escapeHTML(activeSession.code)}</strong> · ${escapeHTML(activeSession.me.emoji)} ${escapeHTML(activeSession.me.name)}</span>
+      <a class="session-banner__btn" href="?screen=connected">Back to session →</a>
+    </div>` : ""}
     <div class="location-bar">📍 You're in Transa Zurich · Aisle map active</div>
     <header>
       <h1>Trail<span class="brand-accent">Mate</span><span class="brand-pill">Scandit</span></h1>
       <p class="tag">What are you looking for?</p>
-      <p class="tag" style="margin-top:8px"><a class="inline-link" href="?screen=plan">plan a trip</a> · <a class="inline-link" href="?screen=compare">compare</a> · <a class="inline-link" href="?screen=repair">repair</a> · <a class="inline-link" href="?screen=connect">connect</a> · <a class="inline-link" href="?screen=fit">fit check</a> · <a class="inline-link" href="?screen=settings">⚙ settings</a></p>
+      <p class="tag" style="margin-top:8px"><a class="inline-link" href="?screen=plan">plan a trip</a> · <a class="inline-link" href="?screen=compare">compare</a> · <a class="inline-link" href="?screen=repair">repair</a> · <a class="inline-link" href="${activeSession ? "?screen=connected" : "?screen=connect"}">${activeSession ? "👥 session" : "connect"}</a> · <a class="inline-link" href="?screen=fit">fit check</a> · <a class="inline-link" href="?screen=settings">⚙ settings</a></p>
     </header>
     <main class="screen-list">
       <input id="q" class="search" type="search" inputmode="search" placeholder="Search by name, brand, category…" autocomplete="off" />
