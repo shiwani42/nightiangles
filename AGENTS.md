@@ -15,6 +15,34 @@ In-store AI concierge for a Swiss outdoor retailer, built on Scandit scanning + 
 
 Both are pure MatrixScan AR territory. Both share the same dataset, license key, camera setup, and product-lookup index.
 
+## The deliverable is a demo video
+
+The hackathon submission is **a working app + a video walkthrough** (challenge README, §"What to submit"). Treat the video as a hard constraint, not an afterthought. Every build decision should ask: *will this read on camera in 60 seconds?*
+
+**Video constraints baked into the plan:**
+
+- The demo must use **the Scandit-provided sample dataset** — `scandit-challenge/dataset/sample-barcodes.pdf` and `scandit-challenge/dataset/products.json`. No physical store available.
+- The person on screen is the user **interacting with the app on their phone**. Web-based (no install) is a feature, not a bug — open via QR code, no friction.
+- The app must work **end-to-end** in the video: pick filter → see matches light up → tap one → see detail. Or: load checklist → point camera → watch items check off → finish.
+- Don't ship anything that requires camera angles we can't fake on a desk.
+
+**Demo-asset prep — read before Phase 5:**
+
+- The bundled `sample-barcodes.pdf` covers 22 demo-book SKUs (9 shoes with QR codes, 10 socks + 3 tops with Code128). It does **not** cover the EAN-13 jacket / tent / sleeping-bag catalog.
+- For Shelf Lens to look impressive, we need a "shelf" of 8-12 visible barcodes representing different products. Two options:
+  1. **Use the PDF alone** — lay the 3 demo-book pages flat (shoes + socks + tops). Filter is something like *"trail shoes in size 42"*. Works without extra prep.
+  2. **Generate extra EAN-13 barcodes** from `products.json` (e.g. with Python `python-barcode` or `bwip-js` in the browser). Print one A4 sheet of ~12 jackets/boots arranged like a shelf. Filter is *"waterproof shells under 400g"* — much closer to the brief's example.
+- **Recommendation:** do option 2. It matches the challenge's headline filter ("waterproof shells under 400g") and demos better. A 30-line script generates the print sheet from products.json.
+
+**Demo storyboard draft (refine as we build):**
+
+1. **0:00–0:10** — Phone shows the store entrance QR code. Tap. App loads with mode chooser ("Shelf Lens", "Find My Product").
+2. **0:10–0:35** — *Shelf Lens.* User selects filter chips: `waterproof` + max weight 400g. Camera frames a printed "shelf" of jackets. 3 jackets light up green; 7 stay dim. User taps one — popover with name, price, stock.
+3. **0:35–0:55** — *Find My Product.* User switches mode. Shows a 5-item checklist on the screen. Points camera at the same shelf. Dots appear over each match; carousel ticks off items one by one. Finish button.
+4. **0:55–1:00** — Brief tag line / next steps.
+
+> Target ≤ 2 min total (under GitHub's 100 MB threshold), single take where possible. **`video.mp4` goes at repo root** per the challenge README.
+
 ## Repo layout
 
 ```
@@ -183,7 +211,7 @@ We work in vertical slices — each phase is demoable.
 - [ ] **Phase 2 — Filter UI (≈1 h).** Chip selector (tags) + sliders (max weight, max price). Build a `Filter` type, a `predicate(filter)` builder, and a small component that emits filter changes.
 - [ ] **Phase 3 — Find My Product (≈1.5 h).** Hardcoded checklist of 5 demo-book barcodes. Full BarcodeFind integration. Results screen on finish.
 - [ ] **Phase 4 — Checklist builder (≈1 h).** UI to add/remove items by name search over the catalog. Saves to localStorage. Optional: a "trip plan" textarea that LLM-converts into a checklist.
-- [ ] **Phase 5 — Landing + polish (≈1 h).** Mode switcher, simple branding, store map glance, demo-mode banner.
+- [ ] **Phase 5 — Landing + polish + demo assets (≈1.5 h).** Mode switcher, simple branding, store map glance, demo-mode banner. **Print-shelf prep:** small script in `app/scripts/make-demo-shelf.{ts,py}` that takes ~12 product codes from `products.json` and renders an A4 PDF of EAN-13 barcodes arranged like a shelf (one per cell, with product name underneath). Print once, tape to wall — same physical asset gets reused for the Find My Product shot.
 - [ ] **Phase 6 — Deploy on Render (≈30 min).** Static site, `_headers` with COOP/COEP, env var for license key, custom subdomain matching the Scandit bundle ID.
 - [ ] **Phase 7 (stretch) — NL filter (≈1 h).** Text input for filter ("waterproof shells under 400g"). Claude API endpoint via small Render Web Service. Returns a `Filter` JSON.
 
@@ -220,3 +248,4 @@ We work in vertical slices — each phase is demoable.
 ## Changelog
 
 - **2026-06-19** — Initial AGENTS.md. Two features (Shelf Lens, Find My Product) mapped to Scandit primitives. Build phases drafted. No code yet — `app/` directory not created. Next step: Phase 0 scaffold.
+- **2026-06-19 (later)** — Added the **demo-video constraint** as a top-level section: deliverable is `video.mp4` at repo root, must use Scandit's sample dataset (PDF + products.json), must show end-to-end app interaction. Plan: generate an extra A4 sheet of printed EAN-13 barcodes from products.json so we can demo *"waterproof shells under 400g"* (the headline filter) — added as a Phase 5 task. Storyboard drafted: ≤2 min, one phone take, Shelf Lens → Find My Product.
