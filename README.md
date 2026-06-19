@@ -79,32 +79,45 @@ Print `scandit-challenge/dataset/sample-barcodes.pdf` (or open it on a second sc
 
 ## Features built
 
-### ✅ v1 — Find what you came for (complete)
+### Find what you came for
 
-| Step | What happens | Tech |
+| Screen | What it does | Tech |
 |---|---|---|
-| **List builder** | Search 249 SKUs by name, brand, or size — click to add to your list | Client-side fuzzy search over `products.json` |
-| **Zone navigator** | Resolves your list to store zones A–G, shows which zones to visit on the store floor plan | `zone` field from catalog + `store-map.png` overlay |
-| **BarcodeFind scanner** | Pre-built Scandit camera UI: live AR dots over every barcode on the shelf, green = on your list; carousel ticks items off as found; sound + haptic on each hit | `BarcodeFind` + `BarcodeFindView` (Scandit 8.4.0) |
-| **Done screen** | Summary of found vs still-missing items | — |
+| **List builder** | Search 249 SKUs by name, brand, or size — click to add. Shows stock status (in-store / in back / out of stock). Demo list auto-fills 8 items guaranteed in the sample PDF. | Client-side fuzzy search over `products.json` |
+| **Zone navigator** | Resolves your list to zones A–G with pulsing pins on the floor plan, sorted by the store's recommended walking order. Per-zone item cards below the map. | `zone` field from catalog + `store-map.png` overlay |
+| **BarcodeFind scanner** | Scandit camera UI: AR dots over every barcode in frame simultaneously, green = on your list; carousel auto-ticks items as found; sound + haptic on each hit; camera-switch button. | `BarcodeFind` + `BarcodeFindView` (Scandit 8.4.0) |
+| **Done screen** | Found vs still-missing summary with product details. | — |
 
-**Symbologies supported:** EAN-13, EAN-8, UPC-E, QR, Code 128, Code 39, Data Matrix — covers the full Scandit demo book + main catalog.
+**Symbologies:** EAN-13, EAN-8, UPC-E, QR, Code 128, Code 39, Data Matrix.
 
-### 🔧 v2 — Trip plan → gear list (in progress)
+### Trip planner
 
-> *"3-day winter hike in the Swiss Alps, starts March 14"*
+Describe a trip in plain text — *"3-day winter hike near Zermatt, starts Saturday"*. The app fetches a live weather forecast (Open-Meteo, no key needed), passes it to Claude Haiku as a tool result, and returns 4–8 catalog items matched to actual conditions, each with a one-sentence reason referencing the forecast. Degrades gracefully to a keyword heuristic when no Anthropic key is configured.
 
-Claude API turns a free-text trip goal into a curated gear checklist matched against the catalog, then drops the shopper straight into the v1 scan flow. The LLM call is routed through a small server-side proxy so the API key never hits the browser.
+### Price Decoder
 
-### 💡 v3 — Smart lenses (designed, time-permitting)
+Scan two products into slot A and slot B. A deterministic diff over catalog fields — material, waterproof rating, temperature rating, weight, extra features — shows exactly where the price gap goes, with a brand-premium residual for the unexplained remainder.
 
-Three zero-install additions on top of the same barcode scanner:
+### Repair vs Replace
 
-| Lens | Shopper pain it solves | Tech weight |
-|---|---|---|
-| **Price Decoder** | Scan two similar products with a price gap → bullet-point breakdown of where the money goes (material, brand premium, tech) | Deterministic JS diff over catalog fields + optional 1-sentence LLM copy |
-| **Repair vs Replace** | Scan a worn item → shows brand repair programme (Patagonia Worn Wear, Arc'teryx ReBird) vs. replacement cost | Hardcoded `brand → repairProgram` JSON lookup + card UI |
-| **Twin Shopper** | Share a live link to a partner at home; they see what you're scanning and vote yes/no in real-time | Supabase Realtime or SSE channel |
+Scan any product. The app looks up the brand's repair programme and compares estimated repair cost bands against the new price. Returns a **Repair / Replace / Either** recommendation with reasoning.
+
+### Twin Shopper (Connect)
+
+Real-time multi-user sessions over Supabase Realtime:
+
+- **Family mode** (FAM-XXXX) — multiple shoppers in-store sharing a list and seeing each other's scan finds live.
+- **Partner-at-home mode** (PAR-XXXX) — one person in-store, one remote; the remote partner sees the live cart and can vote on items.
+
+Both modes include presence (name, emoji, zone), a live activity feed, chat, and a pull-based list snapshot so a joiner immediately sees the existing cart on join.
+
+### Fit Check
+
+Take a photo (opt-in, processed once, never stored). Claude Vision estimates top size, bottom size, and EU shoe size from visual cues with a short reasoning note. Sizes are saved to Settings and pre-fill size filters on the list screen.
+
+### Settings & Accessibility
+
+High contrast, larger text (+25%), reduce motion, speak-scan-results (TTS on finish), and manual size entry (top / bottom / EU shoe) as an alternative to Fit Check.
 
 ---
 
