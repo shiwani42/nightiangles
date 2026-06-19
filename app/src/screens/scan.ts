@@ -141,8 +141,6 @@ export function renderScan(root: HTMLElement) {
       );
     }
 
-    await barcodeFind.setItemList(items);
-
     const viewSettings = new BarcodeFindViewSettings(
       Color.fromHex("#2ecc71"), // in-list pin (green)
       Color.fromHex("#ff5a5a"), // not-in-list pin (red)
@@ -163,6 +161,12 @@ export function renderScan(root: HTMLElement) {
       barcodeFind,
       viewSettings,
     );
+
+    // IMPORTANT: setItemList must be called AFTER createWithSettings.
+    // createWithSettings internally calls addBarcodeFindToContext which wires
+    // the BarcodeFind instance into the scanning pipeline. Any setItemList call
+    // before this point is on an unconnected instance and is silently discarded.
+    await barcodeFind.setItemList(items);
 
     view.setListener({
       didTapFinishButton: async (foundItems: BarcodeFindItem[]) => {
