@@ -5,11 +5,12 @@ HerCode hackathon submission.
 
 ## Layout
 
-- **`scandit-challenge/`** — the original Scandit HerCode challenge brief, sample dataset, and a thorough Web SDK reference. Start here.
+- **`scandit-challenge/`** — the original Scandit HerCode starter, unmodified. Start here for the brief.
   - `README.md` — challenge brief and judging criteria
   - `dataset/` — sample product catalog, scannable barcodes PDF, and the store map
-  - `docs/scandit-web-sdk.md` — indexed reference covering install, modes, symbologies, ID Capture, Parser, samples
   - `.env.example` — template for the Scandit license key
+- **`docs/`** — our own working notes and references.
+  - `scandit-web-sdk.md` — indexed reference covering install, modes, symbologies, ID Capture, Parser, samples, release notes
 - **`body-measurements/`** — git submodule of [farazBhatti/Human-Body-Measurements-using-Computer-Vision](https://github.com/farazBhatti/Human-Body-Measurements-using-Computer-Vision) (MIT). Anthropometric measurement extraction from a single image — candidate building block for the "Fit Translator" direction.
 - **`Ideas_bank.txt`** — candidate hackathon directions and the reasoning behind each.
 
