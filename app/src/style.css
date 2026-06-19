@@ -546,13 +546,83 @@ button, .primary {
   gap: 10px;
 }
 
-.scan-view {
+.scan-viewport {
   flex: 1;
   min-height: 70vh;
-  background: #000;
+  position: relative;
   border-radius: 12px;
   overflow: hidden;
+  background: #000;
+}
+
+.scan-view {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+}
+
+/* Overlay sits on top of the (black) camera view before activation */
+.scan-start-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 10;
+}
+
+/* Pulsing ring behind the button */
+.scan-start-ripple {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 2px solid rgba(45, 125, 78, 0.6);
+  animation: ripple 2s ease-out infinite;
+}
+
+@keyframes ripple {
+  0%   { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+.scan-start-btn {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 28px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  font: 600 17px/1 "Inter", sans-serif;
+  cursor: pointer;
+  box-shadow: 0 4px 24px rgba(45, 125, 78, 0.45);
+  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+  z-index: 1;
+}
+
+.scan-start-btn:hover {
+  background: var(--accent-strong);
+  box-shadow: 0 6px 32px rgba(45, 125, 78, 0.55);
+}
+
+.scan-start-btn:active {
+  transform: scale(0.96);
+}
+
+.scan-start-hint {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  margin: 0;
+  letter-spacing: 0.02em;
 }
 
 .back-link {

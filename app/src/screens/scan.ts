@@ -1,13 +1,14 @@
 import {
   Camera,
-  CameraPosition,
   CameraSwitchControl,
   Color,
   DataCaptureContext,
   DataCaptureView,
+  FrameSourceState,
 } from "@scandit/web-datacapture-core";
 import {
   barcodeCaptureLoader,
+  BarcodeCapture,
   BarcodeFind,
   BarcodeFindItem,
   BarcodeFindItemContent,
@@ -53,27 +54,42 @@ export function renderScan(root: HTMLElement) {
       <p class="tag">Point at the shelf. Items on your list light up green.</p>
     </header>
     <main class="screen-scan">
-      <div id="status" class="status">starting camera…</div>
-      <div id="capture-view" class="scan-view"></div>
+      <div id="status" class="status" style="display:none"></div>
+      <div class="scan-viewport">
+        <div id="capture-view" class="scan-view"></div>
+        <div id="scan-start-overlay" class="scan-start-overlay">
+          <div class="scan-start-ripple"></div>
+          <button id="start-scan-btn" class="scan-start-btn">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            Start scanning
+          </button>
+          <p class="scan-start-hint">Tap to activate camera</p>
+        </div>
+      </div>
       <a class="link-btn back-link" href="?screen=map">← Back to map</a>
     </main>
   `;
 
   const statusEl = root.querySelector("#status") as HTMLDivElement;
   const captureViewEl = root.querySelector("#capture-view") as HTMLDivElement;
+  const startBtn = root.querySelector("#start-scan-btn") as HTMLButtonElement;
+  const overlay = root.querySelector("#scan-start-overlay") as HTMLDivElement;
 
   function setStatus(msg: string) {
+    statusEl.style.display = "";
     statusEl.textContent = msg;
     console.log("[scandit]", msg);
   }
 
-  async function start() {
+  async function boot() {
     if (!LICENSE_KEY) {
       setStatus("ERROR: VITE_SCANDIT_LICENSE_KEY missing. Check app/.env");
+      startBtn.disabled = false;
       return;
     }
 
     setStatus("loading Scandit SDK…");
+
     const context = await DataCaptureContext.forLicenseKey(LICENSE_KEY, {
       libraryLocation:
         "https://cdn.jsdelivr.net/npm/@scandit/web-datacapture-barcode@8/sdc-lib/",
@@ -87,9 +103,13 @@ export function renderScan(root: HTMLElement) {
     // Camera switch toggle (front <-> back) lives in the top-right corner.
     dataCaptureView.addControl(new CameraSwitchControl());
 
-    // Default to the rear-facing camera; user can toggle via the switch control.
-    const camera = Camera.pickBestGuessForPosition(CameraPosition.WorldFacing);
+    // Same camera setup as smoke.ts — proven to work.
+    const camera = Camera.pickBestGuess();
+    await camera.applySettings(BarcodeCapture.recommendedCameraSettings);
     await context.setFrameSource(camera);
+    await camera.switchToDesiredState(FrameSourceState.On);
+
+    setStatus("building item list…");
 
     const settings = new BarcodeFindSettings();
     settings.enableSymbologies([
@@ -121,6 +141,8 @@ export function renderScan(root: HTMLElement) {
       );
     }
 
+    await barcodeFind.setItemList(items);
+
     const viewSettings = new BarcodeFindViewSettings(
       Color.fromHex("#2ecc71"), // in-list pin (green)
       Color.fromHex("#ff5a5a"), // not-in-list pin (red)
@@ -142,8 +164,6 @@ export function renderScan(root: HTMLElement) {
       viewSettings,
     );
 
-    await barcodeFind.setItemList(items);
-
     view.setListener({
       didTapFinishButton: async (foundItems: BarcodeFindItem[]) => {
         const codes = foundItems.map((it) => it.searchOptions.barcodeData);
@@ -162,8 +182,13 @@ export function renderScan(root: HTMLElement) {
     );
   }
 
-  start().catch((err: unknown) => {
-    console.error(err);
-    setStatus(`ERROR: ${(err as Error).message ?? String(err)}`);
+  startBtn.addEventListener("click", () => {
+    overlay.style.display = "none";
+    boot().catch((err: unknown) => {
+      console.error(err);
+      setStatus(`ERROR: ${(err as Error).message ?? String(err)}`);
+      overlay.style.display = "";
+      startBtn.disabled = false;
+    });
   });
 }
