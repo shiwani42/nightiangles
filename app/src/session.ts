@@ -34,6 +34,8 @@ export type Member = {
 export type SessionEvent =
   | { kind: "list:added"; from: string; code: string }
   | { kind: "list:removed"; from: string; code: string }
+  | { kind: "list:snapshot"; from: string; codes: string[] }
+  | { kind: "list:request-snapshot"; from: string }
   | { kind: "scan:found"; from: string; code: string }
   | { kind: "vote"; from: string; code: string; vote: "yes" | "no" }
   | { kind: "chat"; from: string; text: string };

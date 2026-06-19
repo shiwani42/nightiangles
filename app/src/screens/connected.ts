@@ -1,5 +1,5 @@
 import { getProduct } from "../catalog";
-import { getList } from "../list";
+import { getList, addToList } from "../list";
 import {
   Session,
   clearSession,
@@ -22,6 +22,32 @@ function timeStr(): string {
 }
 
 type FeedEntry = { time: string; html: string };
+
+// Render a mini cart card for a set of product codes
+function renderCartHTML(
+  codes: string[],
+  who: string,
+  emptyMsg: string,
+): string {
+  if (codes.length === 0) {
+    return `<p class="hint">${escapeHTML(emptyMsg)}</p>`;
+  }
+  return `
+    <p class="tag">${escapeHTML(who)}'s list — ${codes.length} item${codes.length > 1 ? "s" : ""}</p>
+    <ul class="cart-list">
+      ${codes
+        .map((code) => {
+          const p = getProduct(code);
+          if (!p) return `<li class="cart-item"><span class="cart-item__name">${escapeHTML(code)}</span></li>`;
+          return `
+            <li class="cart-item">
+              <span class="cart-item__name">${escapeHTML(p.name)}</span>
+              <span class="cart-item__sub">${escapeHTML(p.brand)} · ${escapeHTML(p.size)} · ${escapeHTML(p.color)}</span>
+            </li>`;
+        })
+        .join("")}
+    </ul>`;
+}
 
 export function renderConnected(root: HTMLElement) {
   const state = loadSession();
@@ -46,6 +72,19 @@ export function renderConnected(root: HTMLElement) {
       <section class="card-section">
         <h2>Members</h2>
         <ul class="roster" id="roster"></ul>
+      </section>
+
+      <section class="card-section" id="their-cart-section" style="display:none">
+        <h2>Their cart 🛒</h2>
+        <div id="their-cart"><p class="hint">Waiting for cart…</p></div>
+        <button class="link-btn" id="merge-btn" style="display:none;margin-top:8px">
+          ＋ Add their items to my list
+        </button>
+      </section>
+
+      <section class="card-section">
+        <h2>My cart 🛒</h2>
+        <div id="my-cart"></div>
       </section>
 
       <section class="card-section">
@@ -80,10 +119,17 @@ export function renderConnected(root: HTMLElement) {
   const copyBtn = root.querySelector("#copy") as HTMLButtonElement;
   const shareBtn = root.querySelector("#share") as HTMLButtonElement;
   const leaveBtn = root.querySelector("#leave") as HTMLButtonElement;
+  const theirCartSection = root.querySelector("#their-cart-section") as HTMLElement;
+  const theirCartEl = root.querySelector("#their-cart") as HTMLDivElement;
+  const myCartEl = root.querySelector("#my-cart") as HTMLDivElement;
+  const mergeBtn = root.querySelector("#merge-btn") as HTMLButtonElement;
 
   let members: Member[] = [];
   const feed: FeedEntry[] = [];
   const chat: FeedEntry[] = [];
+
+  // Track other members' carts: memberId → product codes[]
+  const otherCarts = new Map<string, string[]>();
 
   function memberById(id: string): Member | undefined {
     return members.find((m) => m.id === id);
@@ -94,6 +140,31 @@ export function renderConnected(root: HTMLElement) {
     if (m) return `${m.emoji} ${m.name}`;
     if (id === state!.me.id) return `${state!.me.emoji} ${state!.me.name}`;
     return "Someone";
+  }
+
+  function renderMyCart() {
+    const list = getList();
+    myCartEl.innerHTML = renderCartHTML(
+      list,
+      `${state!.me.emoji} ${state!.me.name}`,
+      "Your list is empty.",
+    );
+  }
+
+  function renderTheirCart() {
+    if (otherCarts.size === 0) return;
+    theirCartSection.style.display = "";
+    // Merge all other members' carts into one view
+    const allCodes = Array.from(otherCarts.entries()).flatMap(([id, codes]) => {
+      const who = nameFor(id);
+      return codes.map((c) => ({ who, code: c }));
+    });
+    const uniqueCodes = [...new Set(allCodes.map((x) => x.code))];
+    // Show by first contributor's name
+    const firstEntry = Array.from(otherCarts.entries())[0];
+    const firstWho = firstEntry ? nameFor(firstEntry[0]) : "Partner";
+    theirCartEl.innerHTML = renderCartHTML(uniqueCodes, firstWho, "");
+    mergeBtn.style.display = uniqueCodes.length > 0 ? "" : "none";
   }
 
   function renderRoster() {
@@ -141,6 +212,11 @@ export function renderConnected(root: HTMLElement) {
   function describeEvent(e: SessionEvent): string {
     const who = nameFor(e.from);
     switch (e.kind) {
+      case "list:snapshot":
+        return `<strong>${escapeHTML(who)}</strong> shared their cart (${e.codes.length} items)`;
+      case "list:request-snapshot":
+        // silent — no feed noise, just triggers a reply
+        return "";
       case "list:added": {
         const p = getProduct(e.code);
         return `<strong>${escapeHTML(who)}</strong> added <strong>${escapeHTML(p?.name ?? e.code)}</strong> to the list`;
@@ -178,29 +254,90 @@ export function renderConnected(root: HTMLElement) {
         if (e.kind === "chat") {
           const who = nameFor(e.from);
           pushChat(`<strong>${escapeHTML(who)}</strong> ${escapeHTML(e.text)}`);
-        } else {
-          pushFeed(describeEvent(e));
+          return;
         }
+
+        // Someone joined and is asking for our current cart — reply with a snapshot.
+        if (e.kind === "list:request-snapshot") {
+          const list = getList();
+          if (list.length > 0) {
+            session
+              .send({ kind: "list:snapshot", from: state!.me.id, codes: list })
+              .catch(console.error);
+          }
+          return; // no feed noise
+        }
+
+        // Keep other members' carts up to date
+        if (e.kind === "list:snapshot") {
+          otherCarts.set(e.from, e.codes);
+          renderTheirCart();
+        } else if (e.kind === "list:added") {
+          const existing = otherCarts.get(e.from) ?? [];
+          if (!existing.includes(e.code)) existing.push(e.code);
+          otherCarts.set(e.from, existing);
+          renderTheirCart();
+        } else if (e.kind === "list:removed") {
+          const existing = otherCarts.get(e.from) ?? [];
+          otherCarts.set(
+            e.from,
+            existing.filter((c) => c !== e.code),
+          );
+          renderTheirCart();
+        }
+
+        const desc = describeEvent(e);
+        if (desc) pushFeed(desc);
       },
     },
   );
 
   session
     .connect()
-    .then(() => {
+    .then(async () => {
       statusEl.textContent = "Connected. Share the code to invite people.";
-      // Push existing list so newcomers can see context (only the host's view
-      // is meaningful; everyone's list is separate locally).
+      renderMyCart();
+
       const list = getList();
+
+      // Push our own cart to the feed entry so we remember we joined.
       if (list.length > 0) {
         pushFeed(
-          `<strong>${escapeHTML(`${state.me.emoji} ${state.me.name}`)}</strong> starts with ${list.length} item${list.length > 1 ? "s" : ""}`,
+          `<strong>${escapeHTML(`${state.me.emoji} ${state.me.name}`)}</strong> joined with ${list.length} item${list.length > 1 ? "s" : ""}`,
         );
       }
+
+      // Tell everyone in the room "I just joined, please send me your cart".
+      // Existing members will hear this and respond with list:snapshot.
+      // We also broadcast our own snapshot at the same time so they see ours.
+      await Promise.all([
+        session.send({ kind: "list:request-snapshot", from: state.me.id }),
+        list.length > 0
+          ? session.send({ kind: "list:snapshot", from: state.me.id, codes: list })
+          : Promise.resolve(),
+      ]);
     })
     .catch((err: unknown) => {
       statusEl.textContent = `ERROR: ${(err as Error).message ?? String(err)}`;
     });
+
+  // Merge their cart into mine
+  mergeBtn.addEventListener("click", () => {
+    const allCodes = Array.from(otherCarts.values()).flat();
+    let added = 0;
+    for (const code of allCodes) {
+      const before = getList();
+      if (!before.includes(code)) {
+        addToList(code);
+        added++;
+      }
+    }
+    mergeBtn.textContent = `✓ Added ${added} new item${added !== 1 ? "s" : ""}`;
+    renderMyCart();
+    setTimeout(() => {
+      mergeBtn.textContent = "＋ Add their items to my list";
+    }, 2000);
+  });
 
   chatForm.addEventListener("submit", async (e) => {
     e.preventDefault();

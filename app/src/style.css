@@ -1017,6 +1017,37 @@ button, .primary {
 .member__name { font-size: 14px; font-weight: 600; color: var(--fg); }
 .member__zone { font-size: 12px; color: var(--muted-fg); margin-top: 2px; }
 
+/* Cart list — used in Their cart + My cart panels */
+.cart-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cart-item {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.cart-item__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.cart-item__sub {
+  font-size: 12px;
+  color: var(--muted-fg);
+  margin-top: 2px;
+}
+
 .feed li {
   font-size: 13px;
   padding: 8px 10px;
