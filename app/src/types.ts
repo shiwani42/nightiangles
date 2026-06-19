@@ -21,4 +21,12 @@ export type Product = {
   description: string;
 };
 
-export type Screen = "list" | "map" | "scan" | "done" | "smoke" | "plan" | "compare";
+export type Screen =
+  | "list"
+  | "map"
+  | "scan"
+  | "done"
+  | "smoke"
+  | "plan"
+  | "compare"
+  | "repair";

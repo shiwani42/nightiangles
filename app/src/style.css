@@ -743,3 +743,27 @@ button, .primary {
 }
 .diff-list__label { color: #ddd; }
 .diff-list__delta { font-weight: 700; color: var(--accent); white-space: nowrap; }
+
+.repair-rec {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  background: rgba(0,0,0,0.25);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  margin: 10px 0;
+}
+
+.repair-rec__label {
+  font-size: 18px;
+  font-weight: 800;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.repair-rec__reasoning {
+  font-size: 13px;
+  color: #ddd;
+}

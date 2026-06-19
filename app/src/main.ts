@@ -5,6 +5,7 @@ import { renderDone } from "./screens/done";
 import { renderListBuilder } from "./screens/list-builder";
 import { renderMap } from "./screens/map";
 import { renderPlan } from "./screens/plan";
+import { renderRepair } from "./screens/repair";
 import { renderScan } from "./screens/scan";
 import { renderSmoke } from "./screens/smoke";
 
@@ -16,6 +17,7 @@ const VALID_SCREENS: Screen[] = [
   "smoke",
   "plan",
   "compare",
+  "repair",
 ];
 
 function currentScreen(): Screen {
@@ -51,6 +53,9 @@ function mount() {
       break;
     case "compare":
       renderCompare(root);
+      break;
+    case "repair":
+      renderRepair(root);
       break;
   }
 }
