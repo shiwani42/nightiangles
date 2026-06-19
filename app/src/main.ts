@@ -1,5 +1,6 @@
 import "./style.css";
 import type { Screen } from "./types";
+import { applyPrefs } from "./prefs";
 import { renderCompare } from "./screens/compare";
 import { renderConnect } from "./screens/connect";
 import { renderConnected } from "./screens/connected";
@@ -9,6 +10,7 @@ import { renderMap } from "./screens/map";
 import { renderPlan } from "./screens/plan";
 import { renderRepair } from "./screens/repair";
 import { renderScan } from "./screens/scan";
+import { renderSettings } from "./screens/settings";
 import { renderSmoke } from "./screens/smoke";
 
 const VALID_SCREENS: Screen[] = [
@@ -22,6 +24,8 @@ const VALID_SCREENS: Screen[] = [
   "repair",
   "connect",
   "connected",
+  "settings",
+  "fit",
 ];
 
 function currentScreen(): Screen {
@@ -67,7 +71,15 @@ function mount() {
     case "connected":
       renderConnected(root);
       break;
+    case "settings":
+      renderSettings(root);
+      break;
+    case "fit":
+      // dynamically import so the camera/Vision code doesn't load up front
+      import("./screens/fit").then(({ renderFit }) => renderFit(root));
+      break;
   }
 }
 
+applyPrefs();
 mount();

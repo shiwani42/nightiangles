@@ -19,6 +19,7 @@ import {
 } from "@scandit/web-datacapture-barcode";
 import { getList } from "../list";
 import { getProduct } from "../catalog";
+import { announce } from "../prefs";
 
 const LICENSE_KEY = import.meta.env.VITE_SCANDIT_LICENSE_KEY as
   | string
@@ -147,6 +148,7 @@ export function renderScan(root: HTMLElement) {
       didTapFinishButton: async (foundItems: BarcodeFindItem[]) => {
         const codes = foundItems.map((it) => it.searchOptions.barcodeData);
         sessionStorage.setItem(FOUND_KEY, JSON.stringify(codes));
+        announce(`Found ${codes.length} of ${items.length} items. Done.`);
         const url = new URL(window.location.href);
         url.searchParams.set("screen", "done");
         url.searchParams.delete("zone");

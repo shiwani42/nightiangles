@@ -31,4 +31,6 @@ export type Screen =
   | "compare"
   | "repair"
   | "connect"
-  | "connected";
+  | "connected"
+  | "settings"
+  | "fit";

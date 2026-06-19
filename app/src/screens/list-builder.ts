@@ -65,7 +65,7 @@ export function renderListBuilder(root: HTMLElement) {
   root.innerHTML = `
     <header>
       <h1>What are you looking for?</h1>
-      <p class="tag">Search · <a class="inline-link" href="?screen=plan">plan a trip</a> · <a class="inline-link" href="?screen=compare">compare</a> · <a class="inline-link" href="?screen=repair">repair</a> · <a class="inline-link" href="?screen=connect">connect</a></p>
+      <p class="tag">Search · <a class="inline-link" href="?screen=plan">plan a trip</a> · <a class="inline-link" href="?screen=compare">compare</a> · <a class="inline-link" href="?screen=repair">repair</a> · <a class="inline-link" href="?screen=connect">connect</a> · <a class="inline-link" href="?screen=fit">fit check</a> · <a class="inline-link" href="?screen=settings">⚙ settings</a></p>
     </header>
     <main class="screen-list">
       <input id="q" class="search" type="search" inputmode="search" placeholder="Search by name, brand, category…" autocomplete="off" />
