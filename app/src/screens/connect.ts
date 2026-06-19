@@ -21,30 +21,21 @@ export function renderConnect(root: HTMLElement) {
   const joinCode =
     new URLSearchParams(location.search).get("code")?.toUpperCase() ?? "";
 
-  if (!supabaseConfigured) {
-    root.innerHTML = `
-      <header>
-        <h1>Connect</h1>
-        <p class="tag">Real-time shopping with family or a partner at home.</p>
-      </header>
-      <main>
-        <div class="status">
-          ERROR: Supabase isn't configured. Set
-          <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code>
-          in Render and redeploy.
-        </div>
-        <a class="link-btn" href="?screen=list">← Back</a>
-      </main>
-    `;
-    return;
-  }
-
   root.innerHTML = `
     <header>
       <h1>Connect<span class="brand-accent"> 👥</span></h1>
       <p class="tag">Shop together in real time.</p>
     </header>
     <main class="screen-connect">
+      ${!supabaseConfigured ? `
+      <div class="alert-card alert-card--amber" style="margin-bottom:2px">
+        <span style="font-size:18px;line-height:1;flex-shrink:0">⚠️</span>
+        <div>
+          <p style="font-size:13px;font-weight:600;margin:0 0 2px">Realtime not active locally</p>
+          <p style="font-size:12px;margin:0">Add <code style="background:#fff3cd;padding:1px 4px;border-radius:4px">VITE_SUPABASE_URL</code> and <code style="background:#fff3cd;padding:1px 4px;border-radius:4px">VITE_SUPABASE_ANON_KEY</code> to <code style="background:#fff3cd;padding:1px 4px;border-radius:4px">app/.env</code> to enable live sessions.</p>
+        </div>
+      </div>
+      ` : ""}
       ${
         existing
           ? `
@@ -113,6 +104,10 @@ export function renderConnect(root: HTMLElement) {
   modePartnerCard?.addEventListener("click", () => { setTimeout(syncModeCards, 0); });
 
   createBtn.addEventListener("click", () => {
+    if (!supabaseConfigured) {
+      alert("Realtime sessions need VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY in app/.env. Add them and restart the dev server.");
+      return;
+    }
     const name =
       (root.querySelector("#create-name") as HTMLInputElement).value.trim() ||
       "Host";
@@ -129,6 +124,10 @@ export function renderConnect(root: HTMLElement) {
   });
 
   joinBtn.addEventListener("click", () => {
+    if (!supabaseConfigured) {
+      alert("Realtime sessions need VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY in app/.env. Add them and restart the dev server.");
+      return;
+    }
     let code = (
       root.querySelector("#join-code") as HTMLInputElement
     ).value
