@@ -1,6 +1,7 @@
 import {
   Camera,
   CameraPosition,
+  CameraSwitchControl,
   Color,
   DataCaptureContext,
   DataCaptureView,
@@ -82,7 +83,10 @@ export function renderScan(root: HTMLElement) {
     dataCaptureView.connectToElement(captureViewEl);
     await dataCaptureView.setContext(context);
 
-    // Force the rear-facing camera; Scandit's default picks front on web.
+    // Camera switch toggle (front <-> back) lives in the top-right corner.
+    dataCaptureView.addControl(new CameraSwitchControl());
+
+    // Default to the rear-facing camera; user can toggle via the switch control.
     const camera = Camera.pickBestGuessForPosition(CameraPosition.WorldFacing);
     await context.setFrameSource(camera);
 
