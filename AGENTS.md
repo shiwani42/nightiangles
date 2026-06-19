@@ -8,12 +8,46 @@ In-store AI concierge for a Swiss outdoor retailer, built on Scandit scanning + 
 
 **Hard constraint we keep in mind:** *don't reinvent the wheel.* Scandit already ships the hard parts (multi-barcode tracking, AR overlay framework, pre-built BarcodeFindView). We compose, we don't rebuild.
 
-## Two features we're shipping
+## Versioning strategy
 
-1. **Shelf Lens** — point the phone at any shelf. The AR view dims everything except the products that match the active filter ("waterproof shells under 400g", "boots size 42", "rated for -10°C"). Tap a highlighted product → details popover.
-2. **Find My Product** — give the app a checklist (gear list, shopping list). Point camera at a wall. AR highlights the exact models on the list with check marks; the rest stay dim.
+We ship in versions. **v1 = lean on Scandit's existing capabilities** (don't reinvent). **v2+ = our own creative additions** on top. Always finish v1 before opening v2.
 
-Both are pure MatrixScan AR territory. Both share the same dataset, license key, camera setup, and product-lookup index.
+### v1 — the base flow (what we're building right now)
+
+The shopper **knows what they want**. They enter the store with a clear list. We help them find it.
+
+1. **Entry QR → web app.** Shopper scans a QR at the store entrance. Web app opens — no install.
+2. **Enter requirements.** Shopper enters or picks the items they want (e.g. "the Stormpeak 3L hardshell in M", "Trailrunner Pro size 42"). Could be typed names, picked from a search, or pasted from a shopping list.
+3. **Navigate to location.** Using `zone` + `aisle` from `products.json`, the app shows which zones to visit (A–G) overlaid on `store-map.png`. "Your gear is in Zone A (Jackets & Shells) and Zone B (Footwear)."
+4. **At the shelf, scan.** Shopper hits "I'm here" → app activates **Scandit BarcodeFind** with the shopper's list pre-loaded as `BarcodeFindItem[]`. Scandit's **pre-built BarcodeFindView** handles the rest:
+   - Camera preview
+   - Coloured dots over each matched barcode (one camera frame can highlight several at once)
+   - Sound + haptic feedback on match
+   - A carousel showing items still to find, ticking each one off as it's scanned
+5. **Done.** When everything in the zone is ticked off, move to the next zone (or end if only one).
+
+**v1 = mostly Scandit out-of-the-box, glued together with a tiny navigation UI.** No AI, no clever filtering, no recommendation logic.
+
+### v2 — when the shopper doesn't have a list (deferred)
+
+The shopper has an **end goal** ("3-day winter hike in the Swiss Alps, starts March 14") but no shopping list. The app turns the goal into a list, then drops them into the v1 flow.
+
+- LLM-generated checklist from a trip plan (Claude or similar; small prompt → catalog filter → curated list).
+- Optional: filter-based discovery on top of MatrixScan AR ("show only waterproof shells under 400g") — the original *Shelf Lens* idea, repurposed for "browse, don't search."
+
+### v3 — small lenses that add real value on top of v1 (deferred)
+
+The constraint: **no new heavy tech.** Each addition is a small UI / data layer on top of the same barcode scanner. Each solves a real shopper pain. Each is demoable in 15 seconds.
+
+- **Price Decoder** (from `Ideas_bank.txt` idea 2). Scan two similar products with a price gap → side-by-side breakdown of where the money goes ("+€80 Gore-Tex Pro vs proprietary, +€60 full-grain leather, +€60 brand premium"). The catalog already has `material`, `brand`, `tags`, `waterproof_rating_mm`, `weight_g` — the diff is a deterministic JS function over two products. Optionally a tiny LLM call for the natural-language copy ("explain why product A costs €200 more than B in one sentence"). **Tech weight: low.**
+- **Repair vs Replace** (idea 6). Shopper scans an old worn item they're considering replacing. App looks up the brand's repair program (Patagonia Worn Wear, Arc'teryx ReBird — hardcoded lookup table by brand) and shows: repair cost / turnaround vs full replacement economics. Most shoppers don't know repair is an option until prompted. **Tech weight: low — a JSON lookup + a card UI.**
+- **Twin Shopper** (idea 3). Shopper shares a one-shot link to a partner at home. Partner opens it and sees a thumbnail of what was last scanned, with specs and a "yes / maybe / no" set of vote buttons. Vote pings back to the shopper's phone. **Tech weight: medium** (we need a tiny realtime channel — simplest is Supabase Realtime, Pusher, or a small Render Web Service with SSE). If we deploy on Render anyway, this is one route. **Defer to last.**
+
+These compose: a v3 demo can show *scan two boots → Price Decoder card → tap the cheaper one → Repair vs Replace card → twin partner pings approval*. That's a 90-second video addition that reads "this team built layers, not gadgets."
+
+**Order to attempt v3** if we have time after v1 + v2 + a polished demo: Price Decoder → Repair vs Replace → Twin Shopper. The first two are JS-only; Twin Shopper needs a backend.
+
+We won't open v2 until v1 ships and we have a demo video.
 
 ## The deliverable is a demo video
 
@@ -59,46 +93,66 @@ nightiangles/
 │       ├── sample-barcodes.pdf  ← 3 demo-book pages, scannable
 │       └── store-map.png     ← floor plan, zones A–G
 ├── docs/
-│   └── scandit-web-sdk.md    ← our indexed reference for the Scandit Web SDK
-├── body-measurements/        ← submodule (farazBhatti/Human-Body-Measurements-…). Not used by the two features above. Sits here for the "Fit Translator" idea if we extend later.
-└── app/                      ← (not yet created) the actual web app — see Build phases below
+│   └── scandit-web-sdk.md    ← our indexed reference for the Scandit Web SDK (covers 7.6.14; we use 8.4.0)
+├── body-measurements/        ← submodule (farazBhatti/Human-Body-Measurements-…). Parked for now; could feed a Fit-Translator extension.
+└── app/                      ← the Vite + TypeScript web app
+    ├── index.html
+    ├── package.json
+    ├── tsconfig.json
+    ├── .env                  ← VITE_SCANDIT_LICENSE_KEY (gitignored)
+    ├── .env.example          ← template
+    └── src/
+        ├── main.ts           ← current entry: Phase 0 smoke-test scanner
+        └── style.css
 ```
 
-## Scandit primitives we lean on
+## Scandit primitives we lean on (v1)
 
-Anchors point into `docs/scandit-web-sdk.md`.
+Anchors point into `docs/scandit-web-sdk.md`. Note: the docs cover **7.6.14**, but we installed **8.4.0** — see [Scandit 8.x API delta](#scandit-8x-api-delta-vs-our-docs) below.
 
-### For Shelf Lens (MatrixScan AR)
+### The big one: BarcodeFind (`MatrixScan Find`)
 
-- **`BarcodeBatch`** — multi-barcode tracking across frames. (§9 of the docs.) This is the workhorse.
-- **`BarcodeBatchBasicOverlay`** with the `brushForTrackedBarcode(overlay, trackedBarcode)` callback — Scandit calls this per tracked barcode every frame; we return a green brush if the product matches the active filter, a transparent brush otherwise. This is **exactly** the "color this barcode based on whether it matches" primitive we need.
-- **`didTapTrackedBarcode`** — built-in tap handling on AR overlays; we wire it to a product-details popover.
-- **`Symbology.EAN13UPCA`, `Symbology.QR`, `Symbology.Code128`** — required to cover the catalog (EAN-13 for the main 230 SKUs, QR for demo-book shoes, Code128 for demo-book socks/tops).
-- Multithreading is required for MatrixScan — page must be served with COOP/COEP headers (§9). On Render that's a `_headers` file on the static site, or middleware on a web service.
+This is v1's workhorse. Scandit ships a **pre-built UI** that does *exactly* what step 4 of the v1 flow needs.
 
-### For Find My Product (BarcodeFind)
+- **`BarcodeFind`** — the capture mode. (§10 of the docs.)
+- **`BarcodeFindView` + `BarcodeFindViewSettings`** — pre-built UI: camera preview, visual dots over matches, sound + haptic feedback, and the carousel of items-still-to-find with auto-tick. **We do not draw any of this ourselves.**
+- **`BarcodeFindItem` + `BarcodeFindItemSearchOptions(barcodeString)` + `BarcodeFindItemContent(name, subtitle, image)`** — one model object per item the shopper is looking for. We build the array from their list.
+- **`barcodeFind.setItemList(items)` + `barcodeFindView.startSearching()`** — the whole wire-up.
+- **`didTapFinishButton(foundItems)` listener** — fires when shopper hits Finish; we route to the done screen.
 
-- **`BarcodeFind`** — capture mode. (§10 of the docs.)
-- **`BarcodeFindView` + `BarcodeFindViewSettings`** — Scandit's **pre-built** UI with shutter button, visual dots, sound + haptic feedback, and a search carousel with check marks. We do not draw any of this ourselves.
-- **`BarcodeFindItem`, `BarcodeFindItemSearchOptions(barcodeString)`, `BarcodeFindItemContent(name, subtitle, image)`** — model class for "an item the shopper is looking for."
-- **`barcodeFind.setItemList(items)`** + **`barcodeFindView.startSearching()`** — that's the whole wire-up.
-- **`didTapFinishButton(foundItems)`** listener — fires when shopper hits the Finish button; we navigate to a results screen.
+### Symbologies enabled
 
-### Shared
+EAN-13 + QR + Code128 — required to cover the catalog (EAN-13 main, QR for demo-book shoes, Code128 for demo-book socks/tops). One symbol set, used everywhere.
 
-- **`configure({ licenseKey, libraryLocation, moduleLoaders })`** (§2.4) — once at app start, before any mode is created.
-- **`DataCaptureContext.create()`** — the conductor; both features attach to one context (but not simultaneously — modes are exclusive).
+### Shared SDK plumbing
+
+- **`DataCaptureContext.forLicenseKey(key, opts)`** — 8.x replacement for `configure() + create()`. Single async call returns a context.
 - **`DataCaptureView`** — DOM mount.
-- **`Camera.default` + `FrameSourceState.On`** — camera plumbing.
+- **`Camera.pickBestGuess()`** + `FrameSourceState.On` — camera plumbing.
+- COOP/COEP headers if we end up needing MatrixScan multithreading. **BarcodeFind doesn't strictly require it** but it's cheap to add.
 
-### What this saves us from building
+### Scandit 8.x API delta (vs our docs)
 
+`docs/scandit-web-sdk.md` covers 7.6.14. We're on 8.4.0. Only two relevant renames:
+
+| 7.6.14 (in our docs) | 8.4.0 (what we use) |
+|---|---|
+| `await configure({ licenseKey, libraryLocation, moduleLoaders }); await DataCaptureContext.create();` | `const context = await DataCaptureContext.forLicenseKey(licenseKey, { libraryLocation, moduleLoaders });` |
+| `Camera.default` | `Camera.pickBestGuess()` |
+
+Everything else (BarcodeFind, Symbology, listeners, view) is the same names and shapes.
+
+### What this saves us from building (v1)
+
+- Camera permission flow + video preview
 - Multi-barcode tracking
-- AR overlay framework + per-barcode brush coloring
-- Camera permission flow / video preview
-- Pre-built shutter / carousel / sound / haptic UI (Find My Product)
+- Visual dot overlays on matches
+- Sound + haptic feedback on hit
+- The "carousel of items to find" UI with auto-tick
 - Symbology decoding (EAN-13, QR, Code128)
 - Loading progress UI
+
+What we still build: the **list-builder UI**, the **navigation screen** (zone resolver + map overlay), and the **screen wiring** between them. That's it.
 
 ## Dataset reference (key fields only)
 
@@ -204,18 +258,29 @@ user taps Finish button
 
 ## Build phases
 
-We work in vertical slices — each phase is demoable.
+We work in vertical slices — each phase is demoable. **v1 phases come first.** v2 / v3 are sketched at the bottom; don't open them until v1 ships + demo video is recorded.
 
-- [ ] **Phase 0 — Scaffold (≈30 min).** Vite + TS project under `app/`. `npm install @scandit/web-datacapture-core @scandit/web-datacapture-barcode`. Wire license key from `.env`. Render an empty `DataCaptureView`. Confirm camera permission works on phone. Scan one of the PDF barcodes and console.log the result.
-- [ ] **Phase 1 — Shelf Lens MVP (≈2 h).** Hardcoded filter (`tags.includes('waterproof')`). Green/transparent overlay. Tap → details popover.
-- [ ] **Phase 2 — Filter UI (≈1 h).** Chip selector (tags) + sliders (max weight, max price). Build a `Filter` type, a `predicate(filter)` builder, and a small component that emits filter changes.
-- [ ] **Phase 3 — Find My Product (≈1.5 h).** Hardcoded checklist of 5 demo-book barcodes. Full BarcodeFind integration. Results screen on finish.
-- [ ] **Phase 4 — Checklist builder (≈1 h).** UI to add/remove items by name search over the catalog. Saves to localStorage. Optional: a "trip plan" textarea that LLM-converts into a checklist.
-- [ ] **Phase 5 — Landing + polish + demo assets (≈1.5 h).** Mode switcher, simple branding, store map glance, demo-mode banner. **Print-shelf prep:** small script in `app/scripts/make-demo-shelf.{ts,py}` that takes ~12 product codes from `products.json` and renders an A4 PDF of EAN-13 barcodes arranged like a shelf (one per cell, with product name underneath). Print once, tape to wall — same physical asset gets reused for the Find My Product shot.
-- [ ] **Phase 6 — Deploy on Render (≈30 min).** Static site, `_headers` with COOP/COEP, env var for license key, custom subdomain matching the Scandit bundle ID.
-- [ ] **Phase 7 (stretch) — NL filter (≈1 h).** Text input for filter ("waterproof shells under 400g"). Claude API endpoint via small Render Web Service. Returns a `Filter` JSON.
+### v1 phases
 
-**Rough total:** ~7-8 h for both features end-to-end. Stretch optional.
+- [x] **Phase 0 — Scaffold + smoke test (done).** Vite + TS project under `app/`. Installed `@scandit/web-datacapture-core` + `@scandit/web-datacapture-barcode` v8.4.0. License key wired from `app/.env` via `VITE_SCANDIT_LICENSE_KEY`. Single-page barcode scanner that decodes EAN-13 / QR / Code128 and prints the result. `npm run build` green. Next: open dev server on the phone and confirm we can scan a barcode from `scandit-challenge/dataset/sample-barcodes.pdf`.
+- [ ] **Phase 1 — Catalog + list builder (≈1.5 h).** Load `products.json` into a `Map<barcode, Product>` (also a name-search index). UI: search box → click to add → editable list → "Continue" button. Stash list in `sessionStorage` so it survives the route change. No Scandit needed.
+- [ ] **Phase 2 — Navigation screen (≈1 h).** Given the list, compute the unique zones (`A`–`G`). Show `store-map.png` and overlay a marker on each needed zone. Order them shortest-first if we feel ambitious. Button: "I'm at this zone — start scanning."
+- [ ] **Phase 3 — BarcodeFind integration (≈2 h).** Build `BarcodeFindItem[]` from the list (one item per `product_code`). Configure `BarcodeFind` + `BarcodeFindView` with sound + haptics on. Wire `didTapFinishButton` → "Done!" screen showing what was found / what's still missing.
+- [ ] **Phase 4 — Flow glue + entry QR (≈1 h).** Landing page with a big "Start" button (simulates the QR-scanned entry). Connect screens: Landing → List → Map → Scan → Done. Back navigation. Loading states.
+- [ ] **Phase 5 — Demo assets + polish (≈1.5 h).** **Print-shelf prep:** `app/scripts/make-demo-shelf.ts` that takes ~12 product codes from `products.json` and renders an A4 PDF of EAN-13 barcodes arranged like a shelf (one per cell, with product name underneath). Use `bwip-js` (small, browser/node-compatible barcode lib). Print once, tape to wall — same physical asset used for both the navigation demo (zone selector) and the scan-the-shelf demo. Plus: branding, app icon, mobile chrome.
+- [ ] **Phase 6 — Deploy on Render + record demo video (≈1.5 h).** Static Site on Render at `<service>.onrender.com`. Use that subdomain for the Scandit bundle ID. Generate the entry QR pointing at the deploy URL. Record `video.mp4` per the storyboard above. Push `video.mp4` to repo root.
+
+**v1 rough total:** ~8 hours. Once Phase 6 is done, **v1 is submittable** — anything in v2 / v3 is bonus.
+
+### v2 phases (deferred)
+
+- [ ] **Phase v2.1 — Trip plan → list (≈1 h).** Textarea on the landing page: "Tell us your trip." Tiny prompt to Claude/OpenAI returns a `{ items: [{name, qty}] }` JSON. Resolve names against the catalog. Drop straight into Phase 1's list screen with the items pre-populated.
+
+### v3 phases (deferred — small lenses)
+
+- [ ] **Phase v3.1 — Price Decoder (≈1.5 h).** New scan mode: "Compare two products." Scan A, scan B. Card shows price gap and bullet-pointed reasons from the catalog diff. Optional 1-sentence LLM copy on top.
+- [ ] **Phase v3.2 — Repair vs Replace (≈1 h).** Hardcoded `brand → repairProgram` table. Scan worn item → card with repair cost estimate vs new price.
+- [ ] **Phase v3.3 — Twin Shopper (≈2 h).** Shopper hits "Share" on a scanned product → generates a session URL. Partner opens it → sees the product card + vote buttons. Realtime back-channel via Supabase Realtime or a small Render Web Service with SSE. **Last to attempt** — only Render-side piece in the whole project.
 
 ## Decisions made
 
@@ -249,3 +314,10 @@ We work in vertical slices — each phase is demoable.
 
 - **2026-06-19** — Initial AGENTS.md. Two features (Shelf Lens, Find My Product) mapped to Scandit primitives. Build phases drafted. No code yet — `app/` directory not created. Next step: Phase 0 scaffold.
 - **2026-06-19 (later)** — Added the **demo-video constraint** as a top-level section: deliverable is `video.mp4` at repo root, must use Scandit's sample dataset (PDF + products.json), must show end-to-end app interaction. Plan: generate an extra A4 sheet of printed EAN-13 barcodes from products.json so we can demo *"waterproof shells under 400g"* (the headline filter) — added as a Phase 5 task. Storyboard drafted: ≤2 min, one phone take, Shelf Lens → Find My Product.
+- **2026-06-19 (Phase 0 done + scope refined to v1/v2/v3)** — User clarified the staging:
+    - **v1** = the "certain shopper with a list" flow: QR → enter list → navigate to zone → scan shelf → highlight matches. Pure Scandit BarcodeFind + a small navigation step. The two-features framing (Shelf Lens / Find My Product) was simplified to one unified flow.
+    - **v2** = "shopper with an end goal but no list": trip plan → AI-generated checklist → drop into v1.
+    - **v3** = small lenses on top (Price Decoder, Repair vs Replace, Twin Shopper) — no heavy new tech, solve real shopper pains, demo well.
+    Phase plan rewritten to match. **Shelf Lens (filter-based scanning) is parked** — not in v1; may reappear inside v2 or v3 if it earns its keep.
+    Phase 0 scaffold complete: Vite + TS + Scandit @ 8.4.0 + license key wired. Smoke-test `npm run build` green (97 KB gzipped bundle). Code uses the 8.x API (`DataCaptureContext.forLicenseKey`, `Camera.pickBestGuess`) — see "Scandit 8.x API delta" section.
+    Next: Phase 1 — catalog loader + list builder.
