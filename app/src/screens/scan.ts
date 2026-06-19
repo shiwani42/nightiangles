@@ -37,6 +37,10 @@ function escapeHTML(s: string): string {
 }
 
 export function renderScan(root: HTMLElement) {
+  // Force full-viewport layout so the Scandit view fills all available height.
+  // Body class is cleaned up automatically on navigation (full page reload).
+  document.body.classList.add('scan-active');
+
   const list = getList();
   if (list.length === 0) {
     const url = new URL(window.location.href);
