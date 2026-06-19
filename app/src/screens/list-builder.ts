@@ -74,18 +74,29 @@ export function renderListBuilder(root: HTMLElement) {
     <div class="location-bar">📍 You're in Transa Zurich · Aisle map active</div>
     <header>
       <h1>Trail<span class="brand-accent">Mate</span><span class="brand-pill">Scandit</span></h1>
-      <p class="tag">What are you looking for?</p>
-      <p class="tag" style="margin-top:8px"><a class="inline-link" href="?screen=plan">plan a trip</a> · <a class="inline-link" href="?screen=compare">compare</a> · <a class="inline-link" href="?screen=repair">repair</a> · <a class="inline-link" href="${activeSession ? "?screen=connected" : "?screen=connect"}">${activeSession ? "👥 session" : "connect"}</a> · <a class="inline-link" href="?screen=fit">fit check</a> · <a class="inline-link" href="?screen=settings">⚙ settings</a></p>
+      <p class="tag">What are you looking for today?</p>
     </header>
     <main class="screen-list">
-      <input id="q" class="search" type="search" inputmode="search" placeholder="Search by name, brand, category…" autocomplete="off" />
+
+      <div class="readiness-card">
+        <div class="readiness-card__head">
+          <span class="readiness-card__title">Trip Readiness</span>
+          <span class="readiness-card__pct">40%</span>
+        </div>
+        <div class="readiness-bar">
+          <div class="readiness-bar__fill" style="width:40%"></div>
+        </div>
+        <p class="tag" style="margin-top:6px">4 of 10 essentials in your list · <a class="inline-link" href="?screen=plan">plan a trip →</a></p>
+      </div>
+
+      <input id="q" class="search" type="search" inputmode="search" placeholder="Search by name, brand, size, category…" autocomplete="off" />
       <ul id="results" class="results"></ul>
 
       <section class="your-list">
         <div class="your-list__head">
-          <h2>Your list <span id="count" class="count">0</span></h2>
+          <p class="section-label" style="margin:0">Your List <span id="count" class="count">0</span></p>
           <div class="your-list__actions">
-            <button id="demo" class="link-btn">Load demo list</button>
+            <button id="demo" class="link-btn">Load demo</button>
             <button id="clear" class="link-btn">Clear</button>
           </div>
         </div>
@@ -93,7 +104,13 @@ export function renderListBuilder(root: HTMLElement) {
         <p id="empty" class="empty">Add at least one item to continue.</p>
       </section>
 
-      <button id="continue" class="primary" disabled>Continue</button>
+      <button id="continue" class="primary" disabled>Continue to Map →</button>
+
+      <p class="tag" style="text-align:center;margin-top:-4px">
+        <a class="inline-link" href="?screen=compare">compare</a> ·
+        <a class="inline-link" href="?screen=repair">repair vs replace</a> ·
+        <a class="inline-link" href="?screen=fit">fit check</a>
+      </p>
     </main>
   `;
 

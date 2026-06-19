@@ -60,13 +60,16 @@ export function renderConnected(root: HTMLElement) {
 
   root.innerHTML = `
     <header>
-      <h1>${isPartner ? "Partner session" : "Family session"}</h1>
-      <p class="tag">
-        Code <strong class="connect-code" id="code">${escapeHTML(state.code)}</strong>
-        · you are <strong>${escapeHTML(state.me.emoji)} ${escapeHTML(state.me.name)}</strong>
-      </p>
+      <h1>${isPartner ? "Partner" : "Family"}<span class="brand-accent"> Session</span></h1>
+      <p class="tag">You are <strong>${escapeHTML(state.me.emoji)} ${escapeHTML(state.me.name)}</strong></p>
     </header>
     <main class="screen-connected">
+      <div class="session-code-hero">
+        <p class="session-code-hero__label">Session Code</p>
+        <div class="session-code-hero__code" id="code">${escapeHTML(state.code)}</div>
+        <p class="session-code-hero__sub">Share this code to invite people</p>
+      </div>
+
       <div class="status" id="status">connecting…</div>
 
       <section class="card-section">
@@ -75,7 +78,7 @@ export function renderConnected(root: HTMLElement) {
       </section>
 
       <section class="card-section" id="their-cart-section" style="display:none">
-        <h2>Their cart 🛒</h2>
+        <h2>Their Cart 🛒</h2>
         <div id="their-cart"><p class="hint">Waiting for cart…</p></div>
         <button class="link-btn" id="merge-btn" style="display:none;margin-top:8px">
           ＋ Add their items to my list
@@ -83,7 +86,7 @@ export function renderConnected(root: HTMLElement) {
       </section>
 
       <section class="card-section">
-        <h2>My cart 🛒</h2>
+        <h2>My Cart 🛒</h2>
         <div id="my-cart"></div>
       </section>
 
@@ -102,7 +105,7 @@ export function renderConnected(root: HTMLElement) {
       </section>
 
       <div class="row-buttons">
-        <a class="primary" href="?screen=list">Open my shopping</a>
+        <a class="primary" href="?screen=list">Open my shopping list</a>
         <button class="link-btn" id="copy">Copy code</button>
         <button class="link-btn" id="share">Share invite link</button>
         <button class="link-btn" id="leave">Leave session</button>
@@ -175,11 +178,12 @@ export function renderConnected(root: HTMLElement) {
     rosterEl.innerHTML = members
       .map(
         (m) => `
-          <li class="member ${m.id === state!.me.id ? "member--me" : ""}">
-            <span class="member__emoji">${escapeHTML(m.emoji)}</span>
-            <div class="member__meta">
-              <div class="member__name">${escapeHTML(m.name)}${m.id === state!.me.id ? " (you)" : ""}</div>
-              <div class="member__zone">📍 ${escapeHTML(m.zone ?? "entry")}</div>
+          <li class="member-row ${m.id === state!.me.id ? "member-row--me" : ""}">
+            <span class="member-row__dot member-row__dot--green" title="Online"></span>
+            <span class="member-row__emoji">${escapeHTML(m.emoji)}</span>
+            <div class="member-row__body">
+              <div class="member-row__name">${escapeHTML(m.name)}${m.id === state!.me.id ? " <span style=\"font-size:11px;color:var(--muted-fg);font-weight:400\">(you)</span>" : ""}</div>
+              <div class="member-row__detail">📍 ${escapeHTML(m.zone ?? "entry")}</div>
             </div>
           </li>
         `,
