@@ -1,4 +1,6 @@
 import {
+  Camera,
+  CameraPosition,
   Color,
   DataCaptureContext,
   DataCaptureView,
@@ -79,6 +81,10 @@ export function renderScan(root: HTMLElement) {
     const dataCaptureView = new DataCaptureView();
     dataCaptureView.connectToElement(captureViewEl);
     await dataCaptureView.setContext(context);
+
+    // Force the rear-facing camera; Scandit's default picks front on web.
+    const camera = Camera.pickBestGuessForPosition(CameraPosition.WorldFacing);
+    await context.setFrameSource(camera);
 
     const settings = new BarcodeFindSettings();
     settings.enableSymbologies([
