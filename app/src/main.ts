@@ -1,6 +1,8 @@
 import "./style.css";
 import type { Screen } from "./types";
 import { renderCompare } from "./screens/compare";
+import { renderConnect } from "./screens/connect";
+import { renderConnected } from "./screens/connected";
 import { renderDone } from "./screens/done";
 import { renderListBuilder } from "./screens/list-builder";
 import { renderMap } from "./screens/map";
@@ -18,6 +20,8 @@ const VALID_SCREENS: Screen[] = [
   "plan",
   "compare",
   "repair",
+  "connect",
+  "connected",
 ];
 
 function currentScreen(): Screen {
@@ -56,6 +60,12 @@ function mount() {
       break;
     case "repair":
       renderRepair(root);
+      break;
+    case "connect":
+      renderConnect(root);
+      break;
+    case "connected":
+      renderConnected(root);
       break;
   }
 }

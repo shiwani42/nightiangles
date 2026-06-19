@@ -29,4 +29,6 @@ export type Screen =
   | "smoke"
   | "plan"
   | "compare"
-  | "repair";
+  | "repair"
+  | "connect"
+  | "connected";
