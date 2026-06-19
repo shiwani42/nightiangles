@@ -1,6 +1,7 @@
 import "./style.css";
 import type { Screen } from "./types";
 import { renderListBuilder } from "./screens/list-builder";
+import { renderMap } from "./screens/map";
 import { renderSmoke } from "./screens/smoke";
 
 const VALID_SCREENS: Screen[] = ["list", "map", "scan", "done", "smoke"];
@@ -38,7 +39,7 @@ function mount() {
       renderSmoke(root);
       break;
     case "map":
-      renderNotYet(root, "Find your zone", "Map view — Phase 2.");
+      renderMap(root);
       break;
     case "scan":
       renderNotYet(root, "Scan the shelf", "BarcodeFind view — Phase 3.");

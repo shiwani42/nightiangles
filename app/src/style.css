@@ -330,3 +330,146 @@ button, .primary {
   font-size: 12px;
   opacity: 0.5;
 }
+
+/* ===== Map screen ===== */
+
+.screen-map {
+  gap: 14px;
+}
+
+.map-wrap {
+  position: relative;
+  width: 100%;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.map-img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.pin-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.zone-pin {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px rgba(76, 139, 245, 0.25), 0 2px 8px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  animation: pin-pulse 1.6s ease-in-out infinite;
+}
+
+.zone-pin__letter {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.zone-pin__count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--accent);
+  font-size: 12px;
+  line-height: 1;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--accent);
+}
+
+@keyframes pin-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(76, 139, 245, 0.25), 0 2px 8px rgba(0, 0, 0, 0.3); }
+  50%      { box-shadow: 0 0 0 10px rgba(76, 139, 245, 0.05), 0 2px 8px rgba(0, 0, 0, 0.3); }
+}
+
+.zone-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.zone-row {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.zone-row--first {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.zone-row__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.zone-row__letter {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.zone-row__meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.zone-row__name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.zone-row__sub {
+  font-size: 12px;
+  opacity: 0.6;
+  margin-top: 2px;
+}
+
+.zone-items {
+  list-style: none;
+  padding: 8px 0 0 48px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.zone-items li {
+  padding: 2px 0;
+}
+
+.zone-items__name { color: #fff; }
+.zone-items__sub { opacity: 0.55; }
