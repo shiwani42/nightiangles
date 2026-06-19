@@ -473,3 +473,33 @@ button, .primary {
 
 .zone-items__name { color: #fff; }
 .zone-items__sub { opacity: 0.55; }
+
+/* ===== Scan screen ===== */
+
+.screen-scan {
+  gap: 10px;
+}
+
+.scan-view {
+  flex: 1;
+  min-height: 70vh;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.back-link {
+  align-self: flex-start;
+}
+
+/* ===== Done screen ===== */
+
+.screen-done {
+  gap: 12px;
+}
+
+.screen-done .results .result {
+  background: var(--panel-strong);
+  border-color: var(--border);
+}

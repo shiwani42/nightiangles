@@ -1,7 +1,9 @@
 import "./style.css";
 import type { Screen } from "./types";
+import { renderDone } from "./screens/done";
 import { renderListBuilder } from "./screens/list-builder";
 import { renderMap } from "./screens/map";
+import { renderScan } from "./screens/scan";
 import { renderSmoke } from "./screens/smoke";
 
 const VALID_SCREENS: Screen[] = ["list", "map", "scan", "done", "smoke"];
@@ -12,19 +14,6 @@ function currentScreen(): Screen {
     return requested as Screen;
   }
   return "list";
-}
-
-function renderNotYet(root: HTMLElement, title: string, note: string) {
-  root.innerHTML = `
-    <header>
-      <h1>${title}</h1>
-      <p class="tag">${note}</p>
-    </header>
-    <main>
-      <div class="status">This screen ships in the next phase.</div>
-      <a class="primary" href="?screen=list">← Back to list</a>
-    </main>
-  `;
 }
 
 function mount() {
@@ -42,10 +31,10 @@ function mount() {
       renderMap(root);
       break;
     case "scan":
-      renderNotYet(root, "Scan the shelf", "BarcodeFind view — Phase 3.");
+      renderScan(root);
       break;
     case "done":
-      renderNotYet(root, "All set", "Done screen — Phase 4.");
+      renderDone(root);
       break;
   }
 }
