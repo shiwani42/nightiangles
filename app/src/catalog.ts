@@ -8,14 +8,30 @@ const byBarcode = new Map<string, Product>(
 );
 
 // Pre-computed lower-cased haystack per product for substring search.
+// `size <s>` is included as a phrase so natural queries like "boots size 42" work.
 const haystack = new Map<string, string>(
   products.map((p) => [
     p.product_code,
-    [p.name, p.brand, p.category, p.color, p.size, ...p.tags]
+    [
+      p.name,
+      p.brand,
+      p.category,
+      p.color,
+      p.size,
+      `size ${p.size}`,
+      p.material,
+      p.zone_name,
+      ...p.tags,
+    ]
       .join(" ")
       .toLowerCase(),
   ]),
 );
+
+// Light stopword strip so "X for Y" / "X in size Y" still match.
+const STOPWORDS = new Set([
+  "for", "of", "the", "a", "an", "with", "my", "and", "or", "in", "to",
+]);
 
 export function getProduct(barcode: string): Product | undefined {
   return byBarcode.get(barcode);
@@ -28,7 +44,10 @@ export function allProducts(): Product[] {
 export function search(query: string, limit = 12): Product[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
-  const tokens = q.split(/\s+/);
+  const tokens = q
+    .split(/\s+/)
+    .filter((t) => t.length > 0 && !STOPWORDS.has(t));
+  if (tokens.length === 0) return [];
   const out: Product[] = [];
   for (const p of products) {
     const hs = haystack.get(p.product_code) ?? "";
